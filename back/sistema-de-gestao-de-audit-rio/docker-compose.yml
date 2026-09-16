@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8
+    container_name: mysql-db
+    environment:
+      MYSQL_DATABASE: auditdb
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    networks:
+      - sgecnetwork
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    container_name: sgec-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://db:3306/auditdb?useTimezone=true&serverTimezone=America/Sao_Paulo&createDatabaseIfNotExist=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "root"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+      SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.MySQL8Dialect"
+      SPRING_SQL_INIT_MODE: "always"
+      SPRING_SQL_INIT_SCHEMA_LOCATIONS: "classpath:data.sql"
+      SPRING_JACKSON_TIME_ZONE: "America/Sao_Paulo"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sgecnetwork
+
+networks:
+  sgecnetwork:
+    driver: bridge
