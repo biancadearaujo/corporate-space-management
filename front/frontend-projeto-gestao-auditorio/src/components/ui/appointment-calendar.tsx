@@ -489,6 +489,22 @@ export default function AppointmentCalendar() {
         setDayModalDate(date);
         setIsDayModalOpen(true);
     };
+
+    const handleDashboardClick = () => {
+        // Pega as roles do usuário ou um array vazio por segurança se estiver nulo
+        const roles = user?.roles || []; 
+
+        if (roles.includes('ROLE_ADMIN')) {
+            router.push('/admin-dashboard');
+        } else if (roles.includes('ROLE_MANAGER')) {
+            router.push('/manager-dashboard');
+        } else if (roles.includes('ROLE_COLLABORATOR')) {
+            router.push('/collaborator-dashboard');
+        } else {
+            router.push('/');
+        }
+    };
+
     const handleNavigation = (direction: 'prev' | 'next') => {
         const newDate = new Date(selectedDate);
         const step = direction === 'prev' ? -1 : 1;
@@ -665,7 +681,7 @@ export default function AppointmentCalendar() {
                         icon={LayoutDashboard} 
                         label="Dashboard" 
                         collapsed={isSidebarCollapsed}
-                        onClick={() => router.push('/manager-dashboard')}
+                        onClick={handleDashboardClick}
                     />
                     <NavItem 
                         icon={CalendarIcon} 
