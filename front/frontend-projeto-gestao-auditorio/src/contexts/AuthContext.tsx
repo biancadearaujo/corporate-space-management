@@ -87,13 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 name: decodedToken.name,
             });
 
-            // --- NOTA: Encontrei outro bug aqui para você ---
-            // Se um MANAGER logar, ele será redirecionado para a HOME ("/")
-            // Você provavelmente quer que ele vá para o /manager-dashboard
             if (roles.includes('ROLE_ADMIN')) {
                 router.push('/admin-dashboard');
-            } else if (roles.includes('ROLE_MANAGER')) { // <-- Sugestão de correção
+            } else if (roles.includes('ROLE_MANAGER')) {
                  router.push('/manager-dashboard');
+            } else if (roles.includes('ROLE_COLLABORATOR')) {
+                 router.push('/collaborator-dashboard');
             } else {
                 router.push('/');
             }
