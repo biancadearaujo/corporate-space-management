@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { Venue } from '@/interfaces';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,7 +36,7 @@ type AppointmentModalProps = {
     ) => Promise<void>;
     availableTimes: string[];
     loadingTimes: boolean;
-    userRole: 'COLLABORATOR' | 'MANAGER' | null;
+    userRole: 'COLLABORATOR' | 'MANAGER' | 'ADMIN' | null;
     onAppointmentCreated: () => void;
 };
 
@@ -59,12 +58,16 @@ export default function AppointmentModal({
         'MORNING' | 'AFTERNOON' | 'FULL_TIME' | ''
     >('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const [errorModal, setErrorModal] = useState({
+        isOpen: false,
+        title: '',
+        message: ''
+    });
 
     useEffect(() => {
         if (selectedVenueId) {
-            const venue = venues.find(
-                (v: Venue) => v.venueId === selectedVenueId,
-            );
+            const venue = venues.find((v: Venue) => v.venueId === selectedVenueId);
             setCurrentVenue(venue || null);
         } else {
             setCurrentVenue(null);
@@ -81,6 +84,7 @@ export default function AppointmentModal({
             setStartTime('');
             setEndTime('');
             setSelectedPeriod('');
+            setErrorModal({ isOpen: false, title: '', message: '' });
         }
     }, [isOpen]);
 
@@ -94,58 +98,47 @@ export default function AppointmentModal({
             return;
         }
         
-        const createUtcDateTime = (localDate: string, localTime: string): string => {
-            const localDateTime = new Date(`${localDate}T${localTime}`);
-            return localDateTime.toISOString();
+        const formatDateTime = (localDate: string, localTime: string): string => {
+            const timeWithSeconds = localTime.length === 5 ? `${localTime}:00` : localTime;
+            return `${localDate}T${timeWithSeconds}`;
         };
 
-        let payload;
+        let payload: any = {
+            name,
+            description: description || "Sem descrição",
+            venueId: currentVenue.venueId
+        };
 
         if (currentVenue.venueType === 'AUDITORIUM') {
             if (!selectedPeriod) {
-                toast.error(
-                    'Por favor, selecione um período para o auditório.',
-                );
+                toast.error('Por favor, selecione um período para o auditório.');
                 setIsSubmitting(false);
                 return;
             }
-            const periodHours = {
+            const periodHours: Record<string, { start: string, end: string }> = {
                 MORNING: { start: '08:00', end: '12:00' },
                 AFTERNOON: { start: '14:00', end: '18:00' },
                 FULL_TIME: { start: '08:00', end: '18:00' },
             };
 
-            payload = {
-                name,
-                description,
-                venueId: currentVenue.venueId,
-                startAt: createUtcDateTime(date, `${periodHours[selectedPeriod].start}:00`),
-                endAt: createUtcDateTime(date, `${periodHours[selectedPeriod].end}:00`),
-                bookingPeriod: selectedPeriod,
-            };
+            payload.startAt = formatDateTime(date, periodHours[selectedPeriod].start);
+            payload.endAt = formatDateTime(date, periodHours[selectedPeriod].end);
         } else {
             if (!startTime || !endTime) {
-                toast.error(
-                    'Por favor, selecione os horários de início e fim.',
-                );
+                toast.error('Por favor, selecione os horários de início e fim.');
                 setIsSubmitting(false);
                 return;
             }
-            payload = {
-                name,
-                description,
-                venueId: currentVenue.venueId,
-                startAt: createUtcDateTime(date, `${startTime}:00`),
-                endAt: createUtcDateTime(date, `${endTime}:00`),
-            };
+            payload.startAt = formatDateTime(date, startTime);
+            payload.endAt = formatDateTime(date, endTime);
         }
 
         try {
             let endpoint = '';
-            if (userRole === 'MANAGER')
-                endpoint = 'http://localhost:8080/manager/scheduling';
-            else if (userRole === 'COLLABORATOR')
-                endpoint = 'http://localhost:8080/collaborator/scheduling';
+            
+            if (userRole === 'ADMIN') endpoint = 'http://localhost:8080/admin/scheduling';
+            else if (userRole === 'MANAGER') endpoint = 'http://localhost:8080/manager/scheduling';
+            else if (userRole === 'COLLABORATOR') endpoint = 'http://localhost:8080/collaborator/scheduling';
             else {
                 toast.error('Você não tem permissão para criar agendamentos.');
                 setIsSubmitting(false);
@@ -153,17 +146,56 @@ export default function AppointmentModal({
             }
 
             await axios.post(endpoint, payload);
-            toast.success('Solicitação de agendamento enviada com sucesso!');
+            toast.success('Agendamento salvo com sucesso!');
             onAppointmentCreated();
             onClose();
         } catch (error: any) {
-            console.error(
-                'Erro ao criar agendamento:',
-                error.response?.data || error.message,
-            );
-            toast.error(
-                `Erro: ${error.response?.data?.message || 'Verifique os dados e tente novamente.'}`,
-            );
+            let backendMessage = '';
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    backendMessage = error.response.data;
+                } else if (error.response.data.message) {
+                    backendMessage = error.response.data.message;
+                } else {
+                    backendMessage = JSON.stringify(error.response.data);
+                }
+            } else {
+                backendMessage = error.message || 'Erro desconhecido ao comunicar com o servidor.';
+            }
+
+            const msgLower = backendMessage.toLowerCase();
+
+            // Mapeamento dos erros do SchedulingCreatorValidator do Java:
+            
+            if (msgLower.includes('disabled') || msgLower.includes("company is disabled")) {
+                setErrorModal({ isOpen: true, title: 'Empresa Inativa', message: 'A sua empresa está inativa no sistema. Novos agendamentos não são permitidos.' });
+            } 
+            else if (msgLower.includes('at least') || msgLower.includes('hours in the future')) {
+                setErrorModal({ isOpen: true, title: 'Antecedência Mínima', message: 'O agendamento requer uma antecedência mínima. Escolha uma data mais à frente.' });
+            } 
+            else if (msgLower.includes('must be in the future') || msgLower.includes('end at date must be greater')) {
+                setErrorModal({ isOpen: true, title: 'Horário Inválido', message: 'A data e hora do agendamento devem ser no futuro e o horário de fim deve ser após o de início.' });
+            } 
+            else if (msgLower.includes('deadline for reservations has passed')) {
+                setErrorModal({ isOpen: true, title: 'Prazo Excedido', message: 'A data selecionada ultrapassa o limite máximo de meses permitidos para reserva deste espaço.' });
+            } 
+            else if (msgLower.includes('outside the allowed operating hours') || msgLower.includes('no operating hours defined')) {
+                setErrorModal({ isOpen: true, title: 'Fora de Funcionamento', message: 'O horário selecionado está fora do período de funcionamento deste espaço.' });
+            } 
+            else if (msgLower.includes('limit exceeded') || msgLower.includes('quota not found')) {
+                setErrorModal({ isOpen: true, title: 'Limite de Horas Atingido', message: 'A sua empresa não tem horas disponíveis suficientes para realizar este agendamento.' });
+            } 
+            else if (msgLower.includes('already') || msgLower.includes('overlap')) {
+                setErrorModal({ isOpen: true, title: 'Horário Indisponível', message: 'O horário ou período selecionado já está ocupado por outra reserva.' });
+            } 
+            else if (msgLower.includes('equipment')) {
+                setErrorModal({ isOpen: true, title: 'Equipamento Indisponível', message: 'O equipamento selecionado já está reservado, quebrado ou não pertence a este espaço.' });
+            } 
+            else {
+                // Erro genérico
+                setErrorModal({ isOpen: true, title: 'Falha no Agendamento', message: backendMessage });
+            }
+
         } finally {
             setIsSubmitting(false);
         }
@@ -172,175 +204,112 @@ export default function AppointmentModal({
     if (!isOpen) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Novo Agendamento</DialogTitle>
-                    <DialogDescription>
-                        Preencha os detalhes para solicitar um novo agendamento.
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit}>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">
-                                Título*
-                            </Label>
-                            <Input
-                                id="name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="col-span-3"
-                                required
-                            />
+        <>
+            <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent className="sm:max-w-[450px] max-h-[95vh] overflow-y-auto rounded-[20px] border-slate-100 p-0 shadow-2xl flex flex-col">
+                    <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 shrink-0">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-bold text-slate-800">Agendar Horário</DialogTitle>
+                            <DialogDescription className="text-slate-500 mt-1 text-sm">
+                                Preencha os detalhes para reservar um ambiente.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+                        <div>
+                            <Label htmlFor="name" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Título da Reunião/Evento *</Label>
+                            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Reunião de Planejamento" className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all" required />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="description" className="text-right">
-                                Descrição
-                            </Label>
-                            <Textarea
-                                id="description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="col-span-3"
-                            />
+
+                        <div>
+                            <Label htmlFor="description" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Descrição</Label>
+                            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Pauta ou informações..." className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 py-2 min-h-[80px] outline-none text-sm transition-all resize-none" />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="venue" className="text-right">
-                                Espaço*
-                            </Label>
-                            <Select
-                                onValueChange={setSelectedVenueId}
-                                value={selectedVenueId}
-                            >
-                                <SelectTrigger className="col-span-3">
+
+                        <div>
+                            <Label htmlFor="venue" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Ambiente *</Label>
+                            <Select onValueChange={setSelectedVenueId} value={selectedVenueId}>
+                                <SelectTrigger className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all text-slate-700">
                                     <SelectValue placeholder="Selecione um espaço" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-lg border-slate-100">
                                     {venues.map((venue: Venue) => (
-                                        <SelectItem
-                                            key={venue.venueId}
-                                            value={venue.venueId}
-                                        >
+                                        <SelectItem key={venue.venueId} value={venue.venueId} className="cursor-pointer">
                                             {venue.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="date" className="text-right">
-                                Data*
-                            </Label>
-                            <Input
-                                id="date"
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="col-span-3"
-                                required
-                            />
+
+                        <div>
+                            <Label htmlFor="date" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Data do Agendamento *</Label>
+                            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all text-slate-700" required />
                         </div>
 
-                        {currentVenue &&
-                        currentVenue.venueType === 'AUDITORIUM' ? (
-                            <div className="grid grid-cols-4 items-start gap-4">
-                                <Label className="text-right pt-2">
-                                    Período*
-                                </Label>
-                                <RadioGroup
-                                    className="col-span-3 flex flex-col space-y-1"
-                                    value={selectedPeriod}
-                                    onValueChange={(value: any) =>
-                                        setSelectedPeriod(value as any)
-                                    }
-                                >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                            value="MORNING"
-                                            id="morning"
-                                        />
-                                        <Label htmlFor="morning">
-                                            Manhã (08:00 - 12:00)
-                                        </Label>
+                        {currentVenue && currentVenue.venueType === 'AUDITORIUM' ? (
+                            <div className="bg-[#F0F2F5] p-4 rounded-lg border border-transparent">
+                                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Período Disponível *</Label>
+                                <RadioGroup className="flex flex-col space-y-2" value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value as any)}>
+                                    <div className="flex items-center space-x-2 bg-white p-2.5 rounded-md border border-slate-200">
+                                        <RadioGroupItem value="MORNING" id="morning" className="text-[#003399]" />
+                                        <Label htmlFor="morning" className="font-medium text-slate-700 text-sm cursor-pointer">Manhã (08:00 - 12:00)</Label>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                            value="AFTERNOON"
-                                            id="afternoon"
-                                        />
-                                        <Label htmlFor="afternoon">
-                                            Tarde (14:00 - 18:00)
-                                        </Label>
+                                    <div className="flex items-center space-x-2 bg-white p-2.5 rounded-md border border-slate-200">
+                                        <RadioGroupItem value="AFTERNOON" id="afternoon" className="text-[#003399]" />
+                                        <Label htmlFor="afternoon" className="font-medium text-slate-700 text-sm cursor-pointer">Tarde (14:00 - 18:00)</Label>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                            value="FULL_TIME"
-                                            id="full_time"
-                                        />
-                                        <Label htmlFor="full_time">
-                                            Período Integral (08:00 - 18:00)
-                                        </Label>
+                                    <div className="flex items-center space-x-2 bg-white p-2.5 rounded-md border border-slate-200">
+                                        <RadioGroupItem value="FULL_TIME" id="full_time" className="text-[#003399]" />
+                                        <Label htmlFor="full_time" className="font-medium text-slate-700 text-sm cursor-pointer">Integral (08:00 - 18:00)</Label>
                                     </div>
                                 </RadioGroup>
                             </div>
                         ) : (
-                            <>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label
-                                        htmlFor="startTime"
-                                        className="text-right"
-                                    >
-                                        Início*
-                                    </Label>
-                                    <Input
-                                        id="startTime"
-                                        type="time"
-                                        value={startTime}
-                                        onChange={(e) =>
-                                            setStartTime(e.target.value)
-                                        }
-                                        className="col-span-3"
-                                        required
-                                    />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <Label htmlFor="startTime" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Início *</Label>
+                                    <Input id="startTime" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all text-slate-700" required />
                                 </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label
-                                        htmlFor="endTime"
-                                        className="text-right"
-                                    >
-                                        Fim*
-                                    </Label>
-                                    <Input
-                                        id="endTime"
-                                        type="time"
-                                        value={endTime}
-                                        onChange={(e) =>
-                                            setEndTime(e.target.value)
-                                        }
-                                        className="col-span-3"
-                                        required
-                                    />
+                                <div>
+                                    <Label htmlFor="endTime" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Fim *</Label>
+                                    <Input id="endTime" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all text-slate-700" required />
                                 </div>
-                            </>
+                            </div>
                         )}
+
+                        <DialogFooter className="mt-4 gap-2 sm:gap-0 shrink-0">
+                            <Button type="button" variant="outline" onClick={onClose} className="rounded-lg border-slate-200 text-slate-600 font-medium hover:bg-slate-50 h-10 px-5">Cancelar</Button>
+                            <Button type="submit" disabled={isSubmitting} className="rounded-lg bg-[#003399] text-white font-medium hover:bg-[#002266] transition-colors shadow-sm disabled:opacity-70 h-10 px-5">
+                                {isSubmitting ? 'Processando...' : 'Confirmar'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={errorModal.isOpen} onOpenChange={(open) => setErrorModal(prev => ({ ...prev, isOpen: open }))}>
+                <DialogContent className="sm:max-w-[400px] rounded-[24px] p-6 sm:p-8 border-slate-100 shadow-2xl flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-5">
+                        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                     </div>
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={onClose}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting
-                                ? 'Salvando...'
-                                : 'Solicitar Agendamento'}
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                    <DialogTitle className="text-xl font-bold text-slate-800 mb-2">
+                        {errorModal.title}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500 text-sm mb-6 leading-relaxed">
+                        {errorModal.message}
+                    </DialogDescription>
+                    <Button 
+                        onClick={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+                        className="w-full bg-[#003399] hover:bg-[#002266] text-white font-bold rounded-xl h-12 transition-all shadow-md"
+                    >
+                        Voltar e corrigir
+                    </Button>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

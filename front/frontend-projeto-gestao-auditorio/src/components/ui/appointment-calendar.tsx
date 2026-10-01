@@ -33,11 +33,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Venue, VenueApiResponse } from '@/interfaces';
 import Link from 'next/link';
 
-// --- Helpers e Interfaces ---
-
+// --- CORREÇÃO DE HORA (Sem o 'Z' para o JS não alterar o fuso) ---
 function parseApiDate(dateString: string | null | undefined): Date {
     if (!dateString) return new Date(NaN);
-    if (!dateString.endsWith('Z')) return new Date(dateString + 'Z');
+    
+    const cleanString = dateString.split('.')[0].replace('Z', '').replace(/\+.*$/, '');
+    
+    const parts = cleanString.split(/[T ]/); // Separa a data da hora
+    
+    if (parts.length === 2) {
+        const [year, month, day] = parts[0].split('-').map(Number);
+        const [hour, minute, second] = parts[1].split(':').map(Number);
+        
+        return new Date(year, month - 1, day, hour, minute, second || 0);
+    }
+    
     return new Date(dateString);
 }
 
@@ -62,15 +72,13 @@ interface ApiPageResponse<T> {
     totalElements: number;
 }
 
-// --- Modal de Agendamentos do Dia ---
 const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues }: any) => {
     if (!isOpen || !date) return null;
-
     const getVenueName = (venueId: string) => venues.find((v: any) => v.venueId === venueId)?.name || 'Espaço desconhecido';
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px] rounded-3xl p-6 border-slate-100 shadow-2xl">
+            <DialogContent className="sm:max-w-[425px] rounded-[24px] p-6 border-slate-100 shadow-2xl">
                 <DialogHeader className="mb-4">
                     <DialogTitle className="text-slate-800 text-xl font-bold">
                         Agenda de {date.toLocaleDateString('pt-BR')}
@@ -124,9 +132,11 @@ export default function AppointmentCalendar() {
     const [isDayModalOpen, setIsDayModalOpen] = useState(false);
     const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
 
-    const userRoleNormalized: 'COLLABORATOR' | 'MANAGER' | null = hasRole('ROLE_COLLABORATOR') ? 'COLLABORATOR' : hasRole('ROLE_MANAGER') ? 'MANAGER' : null;
+    const userRoleNormalized: 'COLLABORATOR' | 'MANAGER' | 'ADMIN' | null = 
+        hasRole('ROLE_ADMIN') ? 'ADMIN' : 
+        hasRole('ROLE_MANAGER') ? 'MANAGER' : 
+        hasRole('ROLE_COLLABORATOR') ? 'COLLABORATOR' : null;
 
-    // --- Effects (Rolagem Automática ESTILO GOOGLE AGENDA) ---
     useEffect(() => {
         if ((view === 'week' || view === 'day') && scrollContainerRef.current) {
             const timeoutId = setTimeout(() => {
@@ -134,16 +144,14 @@ export default function AppointmentCalendar() {
                     const currentHour = new Date().getHours();
                     const targetHour = Math.max(0, currentHour - 1);
                     const targetId = `scroll-to-hour-${String(targetHour).padStart(2, '0')}`;
-                    
                     const targetElement = scrollContainerRef.current.querySelector(`#${targetId}`);
                     
                     if (targetElement) {
-                        // Como a área de scroll agora é independente, não precisamos mais subtrair 90px do cabeçalho
-                        scrollContainerRef.current.scrollTop = (targetElement as HTMLElement).offsetTop;
+                        // Desconta 65px da altura do cabeçalho para a hora não ficar escondida
+                        scrollContainerRef.current.scrollTop = (targetElement as HTMLElement).offsetTop - 65;
                     }
                 }
             }, 100); 
-    
             return () => clearTimeout(timeoutId);
         }
     }, [view, selectedDate]);
@@ -155,7 +163,6 @@ export default function AppointmentCalendar() {
 
     const fetchAppointments = useCallback(async () => {
         if (!user || !token) return setAppointments([]);
-
         const isAdmin = hasRole('ROLE_ADMIN');
         const isManager = hasRole('ROLE_MANAGER');
         const isCollaborator = hasRole('ROLE_COLLABORATOR');
@@ -181,7 +188,6 @@ export default function AppointmentCalendar() {
                 setAllCompanies(companies);
             }
         } catch (error) {
-            console.error(`Erro ao buscar agendamentos para ${endpoint}:`, error);
             toast.error('Não foi possível carregar os agendamentos.');
             setAppointments([]);
         }
@@ -194,7 +200,6 @@ export default function AppointmentCalendar() {
                 const response = await axios.get<VenueApiResponse>('http://localhost:8080/venue');
                 setVenues(response.data?.content || []);
             } catch (error) {
-                console.error('Erro ao buscar espaços:', error);
                 toast.error('Erro ao carregar a lista de espaços.');
             }
         };
@@ -266,7 +271,6 @@ export default function AppointmentCalendar() {
                 }
                 setAvailableTimes(times);
             } catch (error) {
-                console.error('Erro ao buscar horários disponíveis:', error);
                 toast.error('Erro ao carregar horários disponíveis.');
             } finally {
                 setLoadingAvailableTimes(false);
@@ -275,7 +279,6 @@ export default function AppointmentCalendar() {
         [venues, appointments],
     );
 
-    // --- Visual Logic ---
     const companyColors = ['bg-[#003399]', 'bg-[#00B4D8]', 'bg-[#F28C28]', 'bg-[#2A9D8F]', 'bg-[#9D4EDD]', 'bg-[#E63946]'];
     const getCompanyColor = (companyId: string) => {
         if (!companyId) return 'bg-slate-400';
@@ -364,8 +367,6 @@ export default function AppointmentCalendar() {
         router.replace('/'); 
     };
 
-    // --- Renders Grid Calendário ---
-    
     // Visão MENSAL
     const renderMonthView = () => {
         const days = generateCalendarDays();
@@ -392,11 +393,6 @@ export default function AppointmentCalendar() {
                                                 {appt.name}
                                             </div>
                                         ))}
-                                        {getAppointmentsForDate(date).length > 2 && (
-                                            <div className="text-slate-500 text-[10px] text-center cursor-pointer font-bold bg-slate-50 rounded-md py-1 mt-1 hover:bg-slate-100 transition-colors" onClick={(e) => { e.stopPropagation(); handleDayHeaderClick(date); }}>
-                                                +{getAppointmentsForDate(date).length - 2} mais
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             );
@@ -407,43 +403,39 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // Visão SEMANAL (Estilo Google Agenda)
+    // Visão SEMANAL (ALINHAMENTO PERFEITO ESTILO GOOGLE AGENDA)
     const renderWeekView = () => {
         const weekDays = getWeekDays();
         return (
             <div className="flex flex-col h-full bg-white relative">
-                
-                {/* 1. CABEÇALHO FIXO (Fica fora da área de rolagem) */}
-                {/* A largura da coluna de horas (60px) e das 7 colunas batem perfeitamente com a grade abaixo */}
-                <div className="flex border-b border-slate-200 bg-white shrink-0 pr-[8px]"> 
-                    {/* Espaçador da coluna de horas */}
-                    <div className="w-[60px] md:w-[80px] shrink-0 border-r border-transparent"></div>
-                    {/* Dias da semana */}
-                    <div className="flex-1 grid grid-cols-7">
-                        {weekDays.map((date, index) => (
-                            <div key={index} className="py-3 text-center border-l border-slate-200 bg-white flex flex-col items-center justify-center">
-                                <span className="text-[11px] font-bold text-slate-400 tracking-wider mb-1">{getDayName(date)}</span>
-                                <div onClick={() => handleDayHeaderClick(date)} className={`text-sm font-bold rounded-full w-9 h-9 flex items-center justify-center transition-colors cursor-pointer ${isToday(date) ? 'bg-[#003399] text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
-                                    {date.getDate()}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                
-                {/* 2. CORPO DO CALENDÁRIO (Área com barra de rolagem) */}
+                {/* 1. SCROLL CONTAINER ABRANGENDO CABEÇALHO E GRADE */}
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-white relative">
-                    <div className="flex relative">
-                        {/* Coluna de Horários */}
-                        <div className="w-[60px] md:w-[80px] shrink-0 bg-white flex flex-col">
+                    
+                    {/* CABEÇALHO FIXO DENTRO DO SCROLL (Isso garante alinhamento milimétrico) */}
+                    <div className="flex sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+                        <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white"></div>
+                        <div className="flex-1 grid grid-cols-7">
+                            {weekDays.map((date, index) => (
+                                <div key={index} className="py-2.5 text-center border-r border-slate-200 last:border-r-0 bg-white flex flex-col items-center justify-center">
+                                    <span className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">{getDayName(date)}</span>
+                                    <div onClick={() => handleDayHeaderClick(date)} className={`text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center transition-colors cursor-pointer ${isToday(date) ? 'bg-[#003399] text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'}`}>
+                                        {date.getDate()}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* CORPO DO CALENDÁRIO */}
+                    <div className="flex z-0 relative">
+                        <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white flex flex-col">
                             {timeSlots.map((time) => {
                                 const [hour, minute] = time.split(':');
                                 const isFullHour = minute === '00';
                                 return (
-                                    <div key={time} id={isFullHour ? `scroll-to-hour-${hour}` : undefined} className="h-14 relative w-full flex justify-end pr-2">
-                                        {/* A margem negativa posiciona o texto exatamente na linha, estilo Google */}
+                                    <div key={time} id={isFullHour ? `scroll-to-hour-${hour}` : undefined} className="h-14 relative w-full flex justify-end pr-2 border-b border-slate-100 last:border-b-0">
                                         {isFullHour && (
-                                            <span className="relative -top-2.5 text-[11px] font-medium text-slate-500 bg-white z-10">
+                                            <span className="absolute -top-2.5 text-[10px] font-medium text-slate-400 bg-white px-1 z-10">
                                                 {time}
                                             </span>
                                         )}
@@ -452,22 +444,18 @@ export default function AppointmentCalendar() {
                             })}
                         </div>
                         
-                        {/* Grade e Agendamentos */}
                         <div className="flex-1 grid grid-cols-7 relative">
                             {weekDays.map((date, dayIndex) => {
                                 const dayAppointments = getAppointmentsForDate(date);
                                 const appointmentsByVenue = dayAppointments.reduce((acc, appt) => { (acc[appt.venueId] = acc[appt.venueId] || []).push(appt); return acc; }, {} as Record<string, Appointment[]>);
                                 return (
-                                    <div key={dayIndex} className="border-l border-slate-200 relative bg-white flex flex-col">
-                                        {/* Linhas Horizontais da Grade */}
+                                    <div key={dayIndex} className="border-r border-slate-200 last:border-r-0 relative bg-white flex flex-col">
                                         {timeSlots.map((time) => <div key={`grid-${time}`} className="h-14 border-b border-slate-100 w-full"></div>)}
-                                        
-                                        {/* Agendamentos */}
                                         {Object.values(appointmentsByVenue).flatMap((venueAppointments) => {
                                             return venueAppointments.map((appointment, indexInSlot) => {
                                                 const start = parseApiDate(appointment.startAt);
                                                 const end = parseApiDate(appointment.endAt);
-                                                const pixelsPerMinute = 56 / 30; // h-14 = 56px para 30min
+                                                const pixelsPerMinute = 56 / 30; // h-14 = 56px
                                                 const startTimeInMinutes = start.getHours() * 60 + start.getMinutes();
                                                 const durationInMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                                                 const top = startTimeInMinutes * pixelsPerMinute;
@@ -478,7 +466,7 @@ export default function AppointmentCalendar() {
                                                 const color = hasRole('ROLE_ADMIN') ? getCompanyColor(appointment.companyId) : 'bg-[#003399]';
                                                 
                                                 return (
-                                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-2 text-white cursor-pointer overflow-hidden ${color} shadow-sm hover:shadow-md transition-shadow border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, width, left, zIndex: 10 + indexInSlot }} title={`${appointment.name} (${appointment.cnpj || 'N/A'})`}>
+                                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-2 text-white cursor-pointer overflow-hidden ${color} shadow-sm hover:shadow-md transition-shadow border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, width, left, zIndex: 10 + indexInSlot }} title={`${appointment.name}`}>
                                                         <p className="text-[10px] font-bold truncate leading-tight tracking-wide">{appointment.name}</p>
                                                     </div>
                                                 );
@@ -494,34 +482,31 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // Visão DIÁRIA (Mesma estrutura limpa da Semanal)
+    // Visão DIÁRIA
     const renderDayView = () => {
         const dayAppointments = getAppointmentsForDate(selectedDate);
         return (
             <div className="flex flex-col h-full bg-white relative">
-                
-                {/* 1. CABEÇALHO FIXO */}
-                <div className="flex border-b border-slate-200 bg-white shrink-0 pr-[8px]">
-                    <div className="w-[60px] md:w-[80px] shrink-0 border-r border-transparent"></div>
-                    <div className="flex-1 p-3 text-center border-l border-slate-200 bg-white flex flex-col items-center justify-center">
-                        <span className="text-[11px] font-bold text-slate-400 tracking-wider mb-1">{getDayName(selectedDate)}</span>
-                        <div className={`text-sm font-bold rounded-full w-9 h-9 flex items-center justify-center transition-colors ${isToday(selectedDate) ? 'bg-[#003399] text-white shadow-md' : 'text-slate-700'}`}>
-                            {selectedDate.getDate()}
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-white relative">
+                    <div className="flex sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+                        <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white"></div>
+                        <div className="flex-1 p-2 text-center bg-white flex flex-col items-center justify-center">
+                            <span className="text-[10px] font-bold text-slate-400 tracking-wider mb-1">{getDayName(selectedDate)}</span>
+                            <div className={`text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center transition-colors ${isToday(selectedDate) ? 'bg-[#003399] text-white shadow-md' : 'text-slate-700'}`}>
+                                {selectedDate.getDate()}
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                {/* 2. CORPO DO CALENDÁRIO COM SCROLL */}
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-white relative">
-                    <div className="flex relative">
-                        <div className="w-[60px] md:w-[80px] shrink-0 bg-white flex flex-col">
+                    
+                    <div className="flex z-0 relative">
+                        <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white flex flex-col">
                             {timeSlots.map((time) => {
                                  const [hour, minute] = time.split(':');
                                  const isFullHour = minute === '00';
                                 return (
-                                    <div key={time} id={isFullHour ? `scroll-to-hour-${hour}` : undefined} className="h-14 relative w-full flex justify-end pr-2">
+                                    <div key={time} id={isFullHour ? `scroll-to-hour-${hour}` : undefined} className="h-14 relative w-full flex justify-end pr-2 border-b border-slate-100 last:border-b-0">
                                         {isFullHour && (
-                                            <span className="relative -top-2.5 text-[11px] font-medium text-slate-500 bg-white z-10">
+                                            <span className="absolute -top-2.5 text-[10px] font-medium text-slate-400 bg-white px-1 z-10">
                                                 {time}
                                             </span>
                                         )}
@@ -529,7 +514,7 @@ export default function AppointmentCalendar() {
                                 );
                             })}
                         </div>
-                        <div className="flex-1 relative bg-white border-l border-slate-200 flex flex-col">
+                        <div className="flex-1 relative bg-white flex flex-col">
                             {timeSlots.map((time) => <div key={`grid-${time}`} className="h-14 border-b border-slate-100 w-full"></div>)}
                             {dayAppointments.map((appointment) => {
                                 const start = parseApiDate(appointment.startAt);
@@ -541,7 +526,7 @@ export default function AppointmentCalendar() {
                                 const height = durationInMinutes * pixelsPerMinute;
                                 const color = hasRole('ROLE_ADMIN') ? getCompanyColor(appointment.companyId) : 'bg-[#003399]';
                                 return (
-                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-3 left-0 right-0 mx-3 text-white cursor-pointer ${color} shadow-md hover:shadow-lg transition-all border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }} title={`${appointment.name} - ${appointment.description}`}>
+                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-3 left-0 right-0 mx-3 text-white cursor-pointer ${color} shadow-md hover:shadow-lg transition-all border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }} title={`${appointment.name}`}>
                                         <div className="text-sm font-bold tracking-wide">{appointment.name}</div>
                                         <div className="text-[11px] opacity-90 mt-1.5 font-medium">{`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`} - {` ${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`}</div>
                                     </div>
@@ -556,38 +541,21 @@ export default function AppointmentCalendar() {
 
     return (
         <div className="flex flex-col h-screen bg-[#FAFAFA] font-sans overflow-hidden">
-            
-            {/* --- TOP NAVBAR (ESTILO ARCHDAILY/BRISA) --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
                 <div className="flex items-center gap-4 md:gap-6">
-                    <button 
-                        className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    >
-                        <Menu size={28} strokeWidth={1.5} />
-                    </button>
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"><Menu size={28} strokeWidth={1.5} /></button>
                     <div className="flex items-center gap-2 cursor-pointer" onClick={handleDashboardClick}>
                         <div className="flex flex-col items-center leading-none text-[#003399]">
-                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
-                                <path d="M4 14h8v12"/>
-                                <path d="M12 2v12l8-4"/>
-                            </svg>
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
-                            brisa
-                        </span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
                     </div>
                 </div>
 
                 <div className="hidden md:flex flex-1 max-w-2xl mx-8">
                     <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
                         <Search size={20} className="text-slate-500 mr-3" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar reservas ou espaços..." 
-                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500"
-                        />
+                        <input type="text" placeholder="Buscar reservas ou espaços..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" />
                     </div>
                 </div>
 
@@ -598,35 +566,23 @@ export default function AppointmentCalendar() {
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
-                    
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
-                    
                     <div className="flex items-center gap-5">
                         <button className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
                             <Bell size={18} />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
                         </button>
-
-                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
-                            {user?.name?.split(' ')[0] || 'Usuário'}
-                        </span>
-                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">
-                            Sair
-                        </button>
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">{user?.name?.split(' ')[0] || 'Usuário'}</span>
+                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">Sair</button>
                     </div>
                 </div>
             </header>
 
-            {/* --- MENU MOBILE EXPANSÍVEL --- */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
                     <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
                         <Search size={20} className="text-slate-500 mr-3" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
-                        />
+                        <input type="text" placeholder="Buscar..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base" />
                     </div>
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
                         <Link href="/collaborator-dashboard" className="hover:text-[#003399]">Dashboard</Link>
@@ -637,54 +593,33 @@ export default function AppointmentCalendar() {
                 </div>
             )}
 
-            {/* --- CONTEÚDO PRINCIPAL --- */}
             <main className="flex-1 flex overflow-hidden p-6 lg:p-8 gap-8 pt-6 max-w-[1800px] mx-auto w-full">
-                
-                {/* Painel Lateral Esquerdo (Mini Calendário) */}
                 <div className="hidden lg:flex w-[320px] flex-col gap-6 shrink-0 overflow-y-auto hide-scrollbar">
-                    
                     <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-slate-800 capitalize">
-                                {getMonthName(month)} {year}
-                            </h3>
+                            <h3 className="text-lg font-bold text-slate-800 capitalize">{getMonthName(month)} {year}</h3>
                             <div className="flex gap-1 bg-slate-50 border border-slate-100 rounded-lg p-1">
-                                <Button variant="ghost" size="icon" onClick={previousMonth} className="h-7 w-7 text-slate-500 hover:text-[#003399] hover:bg-white rounded-md">
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={nextMonth} className="h-7 w-7 text-slate-500 hover:text-[#003399] hover:bg-white rounded-md">
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon" onClick={previousMonth} className="h-7 w-7 text-slate-500 hover:text-[#003399] hover:bg-white rounded-md"><ChevronLeft className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={nextMonth} className="h-7 w-7 text-slate-500 hover:text-[#003399] hover:bg-white rounded-md"><ChevronRight className="h-4 w-4" /></Button>
                             </div>
                         </div>
                         <div className="grid grid-cols-7 gap-1 text-center mb-6">
-                            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, idx) => (
-                                <div key={idx} className="text-[10px] font-bold text-slate-400 mb-2">{day}</div>
-                            ))}
+                            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, idx) => (<div key={idx} className="text-[10px] font-bold text-slate-400 mb-2">{day}</div>))}
                             {generateCalendarDays().map((day, index) => {
                                 if (day === null) return <div key={`empty-${index}`} className="h-8"></div>;
                                 const date = new Date(year, month, day);
                                 const isSel = isSelected(date);
                                 const isT = isToday(date);
                                 return (
-                                    <button
-                                        key={`day-${day}`}
-                                        className={`h-9 w-9 rounded-full text-sm font-bold flex items-center justify-center mx-auto transition-all ${isT ? 'bg-[#003399] text-white shadow-md' : isSel ? 'bg-indigo-50 text-[#003399]' : 'text-slate-600 hover:bg-slate-100'}`}
-                                        onClick={() => handleDateSelect(date)}
-                                    >
+                                    <button key={`day-${day}`} className={`h-9 w-9 rounded-full text-sm font-bold flex items-center justify-center mx-auto transition-all ${isT ? 'bg-[#003399] text-white shadow-md' : isSel ? 'bg-indigo-50 text-[#003399]' : 'text-slate-600 hover:bg-slate-100'}`} onClick={() => handleDateSelect(date)}>
                                         {day}
                                     </button>
                                 );
                             })}
                         </div>
-
-                        <Button
-                            className="w-full bg-[#003399] hover:bg-[#002266] text-white font-bold py-6 rounded-xl shadow-md transition-all flex items-center justify-center mb-4 text-[15px]"
-                            onClick={() => setIsAppointmentModalOpen(true)}
-                        >
+                        <Button className="w-full bg-[#003399] hover:bg-[#002266] text-white font-bold py-6 rounded-xl shadow-md transition-all flex items-center justify-center mb-4 text-[15px]" onClick={() => setIsAppointmentModalOpen(true)}>
                             <Plus className="h-5 w-5 mr-2" /> Agendar Horário
                         </Button>
-
                         {hasRole('ROLE_ADMIN') && (
                             <div className="mt-2">
                                 <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">Filtrar por Empresa</label>
@@ -694,54 +629,20 @@ export default function AppointmentCalendar() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todas as empresas</SelectItem>
-                                        {allCompanies.map((company) => (
-                                            <SelectItem key={company.id} value={company.id}>{company.cnpj}</SelectItem>
-                                        ))}
+                                        {allCompanies.map((company) => (<SelectItem key={company.id} value={company.id}>{company.cnpj}</SelectItem>))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         )}
                     </div>
-
-                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100 flex-1">
-                        <h3 className="text-lg font-bold text-slate-800 mb-5">Próximas Reservas</h3>
-                        <div className="space-y-4">
-                            {filteredAppointments.length > 0 ? (
-                                filteredAppointments
-                                    .filter((a) => parseApiDate(a.startAt) > new Date())
-                                    .slice(0, 5)
-                                    .map((appt) => (
-                                        <div key={appt.schedulingId} className="flex items-center gap-4 p-3 rounded-xl border border-slate-100 hover:border-[#003399]/30 hover:bg-slate-50 transition-all cursor-pointer">
-                                            <div className={`w-1.5 h-10 rounded-full ${hasRole('ROLE_ADMIN') ? getCompanyColor(appt.companyId) : 'bg-[#003399]'}`}></div>
-                                            <div className="overflow-hidden">
-                                                <h4 className="text-sm font-bold text-slate-800 truncate">{appt.name}</h4>
-                                                <span className="text-xs text-slate-500 font-medium mt-0.5 block">
-                                                    {parseApiDate(appt.startAt).toLocaleDateString('pt-BR')} • {parseApiDate(appt.startAt).getHours()}:{String(parseApiDate(appt.startAt).getMinutes()).padStart(2, '0')}h
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))
-                            ) : (
-                                <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                                    Nenhuma reserva futura.
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
 
-                {/* Painel Central (Calendário Principal) */}
                 <div className="flex-1 flex flex-col bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden min-w-[600px]">
                     <div className="p-6 lg:px-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white z-10 shrink-0">
                         <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-bold text-slate-800">
-                                {view === 'month' ? 'Visão Mensal' : view === 'week' ? 'Visão Semanal' : 'Visão Diária'}
-                            </h2>
-                            <span className="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 hidden md:block">
-                                {formatDateHeader(selectedDate)}
-                            </span>
+                            <h2 className="text-2xl font-bold text-slate-800">{view === 'month' ? 'Visão Mensal' : view === 'week' ? 'Visão Semanal' : 'Visão Diária'}</h2>
+                            <span className="text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 hidden md:block">{formatDateHeader(selectedDate)}</span>
                         </div>
-                        
                         <div className="flex items-center gap-2 bg-[#F0F2F5] p-1.5 rounded-xl border border-slate-200/60 w-max">
                             <Button variant="ghost" onClick={() => setView('day')} className={`rounded-lg text-[13px] font-bold h-9 px-4 transition-all ${view === 'day' ? 'bg-white text-[#003399] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Dia</Button>
                             <Button variant="ghost" onClick={() => setView('week')} className={`rounded-lg text-[13px] font-bold h-9 px-4 transition-all ${view === 'week' ? 'bg-white text-[#003399] shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Semana</Button>
@@ -759,7 +660,6 @@ export default function AppointmentCalendar() {
                         </div>
                     </div>
                 </div>
-
             </main>
 
             {isAppointmentModalOpen && (

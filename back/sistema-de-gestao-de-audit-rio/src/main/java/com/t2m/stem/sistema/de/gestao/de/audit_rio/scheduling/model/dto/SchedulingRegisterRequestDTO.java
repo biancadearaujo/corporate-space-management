@@ -22,28 +22,28 @@ public record SchedulingRegisterRequestDTO(
         @NotNull(message = "End at cannot be null.")
         LocalDateTime endAt,
 
-        @NotNull(message = "Create at cannot be null.")
+        //@NotNull(message = "Create at cannot be null.")
         LocalDateTime createdAt,
 
         @NotNull(message = "Create by cannot be null.")
         UUID createdBy,
 
-        @NotNull(message = "Company ID cannot be null.")
+       // @NotNull(message = "Company ID cannot be null.")
         UUID companyId,
 
         @NotNull(message = "Venue ID cannot be null.")
         UUID venueId,
 
-        @NotNull(message = "Equipment ID cannot be null.")
+        //@NotNull(message = "Equipment ID cannot be null.")
         UUID equipmentsId,
 
-        @NotNull(message = "Status cannot be null.")
+        //@NotNull(message = "Status cannot be null.")
         SchedulingRequestStatus status,
 
-        @NotNull(message = "Manager ID cannot be null.")
+       // @NotNull(message = "Manager ID cannot be null.")
         UUID decidedBy,
 
-        @NotNull(message = "Decision date cannot be null.")
+        //@NotNull(message = "Decision date cannot be null.")
         Instant decidedAt,
 
         String rejectionReason,
