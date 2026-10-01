@@ -1,395 +1,302 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { withAuth } from '@/components/withAuth';
+import Image from 'next/image';
+import Link from 'next/link';
+
+// Ícones
+import {
+    Search,
+    Menu, // Novo ícone de menu hambúrguer adicionado
+    Heart,
+    Wifi,
+    Users,
+    Coffee,
+    ArrowRight
+} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { ArrowRight, CheckCircle, CheckCircle2 } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
 
-export default function OurSpacesPage() {
+interface VenueResponseDTO {
+    id: string; 
+    name: string;
+    description: string;
+    imageUrl?: string;
+    capacity?: number;
+    features?: string[];
+}
+
+function OurSpacesPage() {
+    const { user, token, logout } = useAuth();
+    const router = useRouter();
+
+    const [spaces, setSpaces] = useState<VenueResponseDTO[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        const fetchVenues = async () => {
+            try {
+                const response = await fetch('http://localhost:8080/venue', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }); 
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setSpaces(data.content || []);
+                }
+            } catch (error) {
+                console.error("Erro na requisição de espaços:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchVenues();
+    }, [token]);
+
+    const handleLogout = () => {
+        if (logout) logout();
+        else localStorage.removeItem('token');
+        router.replace('/'); 
+    };
+
+    const filteredSpaces = spaces.filter(space => 
+        space.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        space.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="min-h-screen bg-white">
-            {/* Seção Hero Profissional */}
-            <section className="relative bg-gradient-to-br from-slate-50 to-white py-24 px-4">
-                <div className="max-w-7xl mx-auto">
-                    <div className="max-w-4xl">
-                        <div className="inline-flex items-center px-4 py-2 bg-teal-50 text-teal-700 rounded-full text-sm font-medium mb-6">
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Soluções de Espaço de Trabalho Premium
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
+            
+            {/* --- TOP NAVBAR (ESTILO ARCHDAILY) --- */}
+            <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
+                
+                {/* Esquerda: Menu e Logo */}
+                <div className="flex items-center gap-4 md:gap-6">
+                    <button 
+                        className="text-slate-600 hover:text-[#003399] transition-colors"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <Menu size={28} strokeWidth={1.5} />
+                    </button>
+                    <div 
+                        className="flex items-center gap-2 cursor-pointer" 
+                        onClick={() => router.push('/collaborator-dashboard')}
+                    >
+                        <div className="flex flex-col items-center leading-none text-[#003399]">
+                            {/* Ícone geométrico simulando a logo da imagem */}
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
+                                <path d="M4 14h8v12"/>
+                                <path d="M12 2v12l8-4"/>
+                            </svg>
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-8 leading-tight">
-                            Nosso Portfólio
-                            <span className="text-teal-600 block">
-                                de Espaços Profissionais
-                            </span>
-                        </h1>
-                        <p className="text-xl text-slate-600 mb-10 leading-relaxed max-w-3xl">
-                            Descubra soluções de espaço de trabalho premium
-                            projetadas para empresas modernas. Nossos espaços
-                            geridos profissionalmente combinam infraestrutura de
-                            ponta com termos flexíveis, permitindo que sua
-                            equipe prospere em ambientes que promovem inovação,
-                            colaboração e crescimento de negócios.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <Button
-                                size="lg"
-                                className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 text-lg font-medium"
-                                asChild
-                            >
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
+                            brisa
+                        </span>
+                    </div>
+                </div>
+
+                {/* Centro: Barra de Busca */}
+                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar no Brisa" 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Direita: Links e Botões de Ação */}
+                <div className="flex items-center gap-6">
+                    <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
+                        <Link href="/collaborator-dashboard" className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        <Link href="#" className="text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
+                    </nav>
+                    
+                    {/* Divisor Vertical */}
+                    <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
+                    
+                    <div className="flex items-center gap-4">
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {user?.name?.split(' ')[0] || 'Usuário'}
+                        </span>
+                        {/* Botão com o azul escuro característico */}
+                        <button 
+                            onClick={handleLogout} 
+                            className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors"
+                        >
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* --- MENU MOBILE EXPANSÍVEL (Opcional, ativado pelo menu hambúrguer) --- */}
+            {isMobileMenuOpen && (
+                <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
+                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar no Brisa..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
+                        <Link href="/collaborator-dashboard" className="hover:text-[#003399]">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399]">Minhas Reservas</Link>
+                        <Link href="#" className="text-[#003399]">Nossos Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399]">Meu Perfil</Link>
+                    </nav>
+                </div>
+            )}
+
+            {/* --- MAIN CONTENT --- */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6 md:p-8">
+                    
+                    {/* Banner Estilo Landing Page (Lilás/Pastel) */}
+                    <div className="w-full relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#EAE6F5] to-[#FDFBF7] p-10 md:p-14 shadow-sm border border-white mb-10 flex items-center justify-between">
+                        <div className="max-w-2xl relative z-10">
+                            <div className="inline-flex items-center px-4 py-1.5 bg-white/60 backdrop-blur-sm text-[#6C5B7B] rounded-full text-xs font-bold mb-6 tracking-wide shadow-sm">
+                                ✨ Trabalhe com mais leveza
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-extrabold text-[#355C7D] mb-5 leading-tight">
+                                Mais produtividade, <br/>
+                                <span className="text-[#C06C84]">menos improviso.</span>
+                            </h2>
+                            <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-xl">
+                                Ambientes humanizados e colaborativos pensados para aprimorar seu bem-estar no dia a dia. Estrutura pronta para você atender desde o primeiro momento.
+                            </p>
+                            <Button className="bg-[#C06C84] hover:bg-[#a85a70] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#C06C84]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
                                 <Link href="/calendar">
-                                    Agendar Consulta
-                                    <ArrowRight className="w-5 h-5 ml-2" />
+                                    Quero reservar agora <ArrowRight className="w-5 h-5 ml-2" />
                                 </Link>
                             </Button>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Soluções de Espaço de Trabalho */}
-            <section className="bg-gradient-to-b from-slate-50 to-white py-16 sm:py-24">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mx-auto max-w-2xl text-center">
-                        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                            O Espaço Certo para Cada Necessidade de Negócio
-                        </h2>
-                        <p className="mt-4 text-lg text-slate-600">
-                            Escolha o ambiente ideal para sua equipe trabalhar
-                            com máxima produtividade e excelência profissional.
-                        </p>
+                        <div className="hidden lg:block absolute right-10 top-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-white/40 to-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
 
-                    <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {/* Diferenciais */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
                         {[
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Salas de Reunião Executivas',
-                                description:
-                                    'Espaços de última geração equipados com tecnologia avançada para reuniões produtivas e apresentações impactantes.',
-                                features: [
-                                    'Capacidade para 4-20 profissionais',
-                                    'Equipamento audiovisual avançado',
-                                    'Serviço de catering premium',
-                                    'Suporte profissional para apresentações',
-                                ],
-                            },
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Escritórios Executivos Privativos',
-                                description:
-                                    'Ambientes exclusivos e personalizáveis para equipes que exigem privacidade, foco e prestígio profissional.',
-                                features: [
-                                    'Acesso seguro 24/7',
-                                    'Mobiliário ergonômico premium',
-                                    'Endereço comercial de prestígio',
-                                    'Serviços de recepção dedicados',
-                                ],
-                            },
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Espaços de Coworking Premium',
-                                description:
-                                    'Ambientes compartilhados sofisticados com infraestrutura abrangente para profissionais independentes e equipes em crescimento.',
-                                features: [
-                                    'Estações de trabalho dedicadas ou flexíveis',
-                                    'Áreas de lounge executivo',
-                                    'Comunidade de networking profissional',
-                                    'Serviços de concierge',
-                                ],
-                            },
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Soluções de Escritório Móvel',
-                                description:
-                                    'Espaços de trabalho móveis totalmente equipados entregues no local de sua preferência com configuração e suporte profissionais.',
-                                features: [
-                                    'Implantação sob demanda',
-                                    'Infraestrutura tecnológica completa',
-                                    'Equipe de instalação profissional',
-                                    'Opções de agendamento flexíveis',
-                                ],
-                            },
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Espaços para Eventos e Conferências',
-                                description:
-                                    'Locais premium projetados para eventos corporativos, conferências e reuniões profissionais com suporte completo.',
-                                features: [
-                                    'Opções de capacidade escaláveis',
-                                    'Coordenação profissional de eventos',
-                                    'Parcerias de catering premium',
-                                    'Sistemas avançados de áudio, vídeo e iluminação',
-                                ],
-                            },
-                            {
-                                image: '/placeholder.svg?height=300&width=400',
-                                title: 'Laboratórios de Inovação',
-                                description:
-                                    'Espaços colaborativos de ponta projetados para equipes focadas em pesquisa, desenvolvimento e inovação.',
-                                features: [
-                                    'Infraestrutura tecnológica avançada',
-                                    'Layouts colaborativos flexíveis',
-                                    'Acesso a equipamentos especializados',
-                                    'Programas de mentoria em inovação',
-                                ],
-                            },
-                        ].map((space, i) => (
-                            <Card
-                                key={i}
-                                className="group overflow-hidden border-0 bg-white shadow-lg shadow-slate-200/50 hover:shadow-xl transition-shadow duration-300"
-                            >
-                                <div className="aspect-w-16 aspect-h-9 relative h-48 w-full overflow-hidden rounded-t-lg">
-                                    <Image
-                                        src={space.image || '/placeholder.svg'}
-                                        alt={space.title}
-                                        fill
-                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
+                            { icon: Heart, title: 'Ambiente Humanizado', desc: 'Acolhedor e bem iluminado' },
+                            { icon: Wifi, title: 'Estrutura Completa', desc: 'Internet de alta velocidade' },
+                            { icon: Users, title: 'Networking Real', desc: 'Conexões que geram valor' },
+                            { icon: Coffee, title: 'Copa Equipada', desc: 'Área de convivência e café' },
+                        ].map((item, i) => (
+                            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center hover:shadow-md transition-shadow">
+                                <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-[#003399] mb-3">
+                                    <item.icon size={24} />
                                 </div>
-                                <CardHeader>
-                                    <CardTitle className="text-xl font-semibold text-slate-900">
-                                        {space.title}
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <CardDescription className="text-base text-slate-600">
-                                        {space.description}
-                                    </CardDescription>
-                                    <ul className="space-y-2">
-                                        {space.features.map((feature, j) => (
-                                            <li
-                                                key={j}
-                                                className="flex items-start"
-                                            >
-                                                <CheckCircle2 className="mr-2 h-5 w-5 flex-shrink-0 text-emerald-500" />
-                                                <span className="text-sm text-slate-700">
-                                                    {feature}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button className="w-full rounded-md bg-teal-600 hover:bg-teal-700 text-white font-medium">
-                                        Agendar Visita
-                                    </Button>
-                                </CardFooter>
-                            </Card>
+                                <h4 className="font-bold text-slate-800 text-sm mb-1">{item.title}</h4>
+                                <p className="text-xs text-slate-500">{item.desc}</p>
+                            </div>
                         ))}
                     </div>
-                </div>
-            </section>
 
-            {/* Estatísticas Profissionais */}
-            <section className="py-20 px-4 bg-teal-600 text-white">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold mb-4">
-                            Confiado por Líderes da Indústria
-                        </h2>
-                        <p className="text-xl text-teal-100 max-w-2xl mx-auto">
-                            Nosso compromisso com a excelência nos tornou o
-                            parceiro de espaço de trabalho preferido para
-                            empresas da Fortune 500 e empresas em crescimento.
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        <div className="space-y-2">
-                            <div className="text-4xl font-bold">150+</div>
-                            <div className="text-teal-100 font-medium">
-                                Localizações Premium
-                            </div>
-                            <div className="text-sm text-teal-200">
-                                Nos principais mercados
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-4xl font-bold">50K+</div>
-                            <div className="text-teal-100 font-medium">
-                                Profissionais Atendidos
-                            </div>
-                            <div className="text-sm text-teal-200">
-                                Membros ativos mensais
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-4xl font-bold">99.9%</div>
-                            <div className="text-teal-100 font-medium">
-                                Disponibilidade do Serviço
-                            </div>
-                            <div className="text-sm text-teal-200">
-                                Disponibilidade garantida
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-4xl font-bold">24/7</div>
-                            <div className="text-teal-100 font-medium">
-                                Suporte de Concierge
-                            </div>
-                            <div className="text-sm text-teal-200">
-                                Assistência profissional
-                            </div>
+                    {/* Titulo da Seção de Grid */}
+                    <div className="mb-6 flex items-end justify-between">
+                        <div>
+                            <h3 className="text-2xl font-bold text-slate-800">Nossos Ambientes</h3>
+                            <p className="text-slate-500 mt-1 text-sm">Salas mobiliadas, climatizadas e prontas para uso.</p>
                         </div>
                     </div>
-                </div>
-            </section>
 
-            {/* CTA Empresarial */}
-            <section className="py-20 px-4 bg-white">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-4xl font-bold text-slate-900 mb-6">
-                        Pronto para Elevar Seu Espaço de Trabalho?
-                    </h2>
-                    <p className="text-xl text-slate-600 mb-10 leading-relaxed">
-                        Conecte-se com nossos consultores de espaço de trabalho
-                        para discutir seus requisitos específicos e descobrir
-                        como nossas soluções premium podem apoiar seus objetivos
-                        de negócio.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Button
-                            size="lg"
-                            className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 text-lg font-medium"
-                        >
-                            Contate Nossa Equipe
-                            <ArrowRight className="w-5 h-5 ml-2" />
-                        </Button>
-                        <Button
-                            size="lg"
-                            variant="outline"
-                            className="px-8 py-4 text-lg font-medium border-slate-300"
-                        >
-                            Solicitar Proposta Personalizada
-                        </Button>
+                    {/* Grid de Espaços */}
+                    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 pb-8">
+                        {isLoading ? (
+                            <div className="col-span-full py-20 text-center flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 border-4 border-slate-200 border-t-[#003399] rounded-full animate-spin mb-4"></div>
+                                <p className="text-slate-400 font-medium">Preparando os espaços...</p>
+                            </div>
+                        ) : filteredSpaces.length === 0 ? (
+                            <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-slate-100 border-dashed">
+                                <p className="text-slate-400 font-medium">Nenhum ambiente encontrado com esse nome.</p>
+                            </div>
+                        ) : (
+                            filteredSpaces.map((space, index) => (
+                                <Card
+                                    key={space.id|| index} 
+                                    className="group overflow-hidden border border-slate-100 bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+                                >
+                                    <div className="aspect-w-4 aspect-h-3 relative h-56 w-full overflow-hidden bg-slate-100">
+                                        <Image
+                                            src={space.imageUrl || '/placeholder.svg?height=400&width=600'} 
+                                            alt={space.name}
+                                            fill
+                                            className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                                        />
+                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full text-slate-700 shadow-sm">
+                                            Pronto para uso
+                                        </div>
+                                    </div>
+                                    
+                                    <CardHeader className="px-6 pt-6 pb-2">
+                                        <CardTitle className="text-xl font-bold text-slate-800">
+                                            {space.name}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    
+                                    <CardContent className="px-6 flex-1">
+                                        <p className="text-sm text-slate-500 leading-relaxed mb-5 line-clamp-3">
+                                            {space.description || "Espaço ideal para reuniões, atendimentos ou foco total. Infraestrutura completa inclusa."}
+                                        </p>
+                                        
+                                        <div className="flex flex-wrap gap-2">
+                                            {space.capacity && (
+                                                <span className="inline-flex items-center text-xs font-medium bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-200">
+                                                    <Users size={12} className="mr-1.5 text-slate-400" />
+                                                    Até {space.capacity} pessoas
+                                                </span>
+                                            )}
+                                            {space.features?.slice(0, 2).map((feature, j) => (
+                                                <span key={j} className="inline-flex items-center text-xs font-medium bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-200">
+                                                    {feature}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                    
+                                    <CardFooter className="px-6 pb-6 pt-4">
+                                        <Button className="w-full rounded-xl bg-slate-50 hover:bg-[#003399] text-[#003399] hover:text-white border border-slate-200 transition-colors font-semibold py-6 shadow-none" asChild>
+                                            <Link href={`/calendar?venue=${space.id}`}>
+                                                Ver disponibilidade
+                                            </Link>
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            ))
+                        )}
                     </div>
                 </div>
-            </section>
-            <footer className="bg-slate-900 text-white">
-                <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
-                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-                        <div className="space-y-4 text-center md:text-left">
-                            <Link
-                                href="/"
-                                className="flex items-center justify-center md:justify-start gap-2"
-                            >
-                                <Image
-                                    src="/assets/logo.svg"
-                                    alt="Logo"
-                                    width={120}
-                                    height={40}
-                                    className="h-10 w-auto"
-                                />
-                            </Link>
-                            <p className="text-sm text-slate-300">
-                                Fornecendo soluções premium de workspace desde
-                                2002.
-                            </p>
-                            <div className="flex justify-center md:justify-start space-x-4">
-                                {[
-                                    'twitter',
-                                    'linkedin',
-                                    'facebook',
-                                    'instagram',
-                                ].map((social) => (
-                                    <Link
-                                        key={social}
-                                        href={`https://www.${social}.com`}
-                                        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:bg-teal-500 hover:text-white transition-colors"
-                                    >
-                                        <span className="sr-only">
-                                            {social}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="text-center md:text-left">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                                Produto
-                            </h3>
-                            <ul className="mt-4 space-y-3">
-                                {[
-                                    'Espaços',
-                                    'Opções de Reserva',
-                                    'Recursos',
-                                    'Empresas',
-                                    'Depoimentos',
-                                ].map((item) => (
-                                    <li key={item}>
-                                        <Link
-                                            href="#"
-                                            className="text-sm text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            {item}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        <div className="text-center md:text-left">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                                Empresa
-                            </h3>
-                            <ul className="mt-4 space-y-3">
-                                {[
-                                    'Sobre nós',
-                                    'Carreiras',
-                                    'Blog',
-                                    'Notícias',
-                                    'Contato',
-                                ].map((item) => (
-                                    <li key={item}>
-                                        <Link
-                                            href="#"
-                                            className="text-sm text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            {item}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        <div className="text-center md:text-left">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                                Legal
-                            </h3>
-                            <ul className="mt-4 space-y-3">
-                                {[
-                                    'Termos de Uso',
-                                    'Privacidade',
-                                    'Cookies',
-                                    'Licenças',
-                                    'Configurações',
-                                ].map((item) => (
-                                    <li key={item}>
-                                        <Link
-                                            href="#"
-                                            className="text-sm text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            {item}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="mt-12 border-t border-slate-700 pt-8 text-center">
-                        <p className="text-sm text-slate-400">
-                            © 2025 Company. Todos os direitos reservados.
-                        </p>
-                    </div>
-                </div>
-            </footer>
+            </main>
         </div>
     );
 }
+
+export default withAuth(OurSpacesPage, ['ROLE_COLLABORATOR', 'ROLE_MANAGER', 'ROLE_ADMIN']);
