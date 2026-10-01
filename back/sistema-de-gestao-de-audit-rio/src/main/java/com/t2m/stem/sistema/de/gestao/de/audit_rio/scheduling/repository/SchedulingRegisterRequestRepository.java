@@ -60,11 +60,29 @@ public interface SchedulingRegisterRequestRepository extends JpaRepository<Sched
             @Param("end") LocalDateTime end
     );
 
-    @Query("SELECT s FROM SchedulingRegisterRequest s WHERE s.venue = :venue AND DATE(s.startAt) = :date")
-    List<SchedulingRegisterRequest> findAllByVenueAndDate(@Param("venue") Venue venue, @Param("date") LocalDate date);
+    //@Query("SELECT s FROM SchedulingRegisterRequest s WHERE s.venue = :venue AND DATE(s.startAt) = :date")
+    //List<SchedulingRegisterRequest> findAllByVenueAndDate(@Param("venue") Venue venue, @Param("date") LocalDate date);
 
-    @Query("SELECT s FROM SchedulingRegisterRequest s WHERE s.subVenue = :subVenue AND DATE(s.startAt) = :date")
-    List<SchedulingRegisterRequest> findAllBySubVenueAndDate(@Param("subVenue") SubVenue subVenue, @Param("date") LocalDate date);
+    //@Query("SELECT s FROM SchedulingRegisterRequest s WHERE s.subVenue = :subVenue AND DATE(s.startAt) = :date")
+    //List<SchedulingRegisterRequest> findAllBySubVenueAndDate(@Param("subVenue") SubVenue subVenue, @Param("date") LocalDate date);
+
+    @Query("SELECT s FROM SchedulingRegisterRequest s " +
+            "WHERE s.venue = :venue " +
+            "AND DATE(s.startAt) = :date " +
+            "AND s.status NOT IN ('CANCELLED', 'REJECTED')")
+    List<SchedulingRegisterRequest> findAllByVenueAndDate(
+            @Param("venue") Venue venue,
+            @Param("date") LocalDate date
+    );
+
+    @Query("SELECT s FROM SchedulingRegisterRequest s " +
+            "WHERE s.subVenue = :subVenue " +
+            "AND DATE(s.startAt) = :date " +
+            "AND s.status NOT IN ('CANCELLED', 'REJECTED')")
+    List<SchedulingRegisterRequest> findAllBySubVenueAndDate(
+            @Param("subVenue") SubVenue subVenue,
+            @Param("date") LocalDate date
+    );
 
     List<SchedulingRegisterRequest> findByStatusAndCompanyCompanyId(SchedulingRequestStatus status, UUID companyId);
     Optional<SchedulingRegisterRequest> findBySchedulingIdAndCompanyCompanyId(UUID schedulingId, UUID companyId);
