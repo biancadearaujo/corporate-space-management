@@ -71,7 +71,9 @@ public class SecurityConfig {
                                         "/v3/api-docs/**",
                                         "/users",
                                         "/h2-console/**",
-                                        "/companies"
+                                        "/companies",
+                                        "/venue"
+
                                 ).permitAll()
                                 .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
