@@ -94,7 +94,7 @@ const StatCard = ({ label, value, subtext, active }: { label: string, value: str
 
 // --- COMPONENTE PRINCIPAL ---
 function CollaboratorDashboard() {
-    const { user, token } = useAuth();
+    const { user, token, logout } = useAuth();
     const router = useRouter();
 
     // --- ESTADOS GERAIS ---
@@ -353,6 +353,19 @@ function CollaboratorDashboard() {
         } catch (error) { console.error(error); alert("Erro ao conectar."); } finally { setIsSavingEdit(false); }
     };
 
+    const handleLogout = () => {
+    // Chama a função logout do contexto (que limpa o localStorage e os estados)
+    if (logout) {
+        logout();
+    } else {
+        // Fallback de segurança caso a função não seja importada
+        localStorage.removeItem('token');
+    }
+    
+    // Usa o replace em vez de push para impedir a volta pela seta do navegador
+    router.replace('/'); 
+};
+
     // --- POLLING DE DADOS (AQUI ESTÁ A MUDANÇA) ---
     useEffect(() => {
         // 1. Busca inicial
@@ -419,7 +432,7 @@ function CollaboratorDashboard() {
                     <SidebarItem icon={User} label="Perfil" onClick={() => router.push('/profile')} />
                 </nav>
                 <div className="mt-auto pt-6 border-t border-slate-700">
-                    <SidebarItem icon={LogOut} label="Sair" onClick={() => router.push('/')} />
+                    <SidebarItem icon={LogOut} label="Sair" onClick={handleLogout} />
                 </div>
             </aside>
 
