@@ -4,23 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-    LayoutDashboard,
     CalendarDays,
     Clock,
-    LogOut,
-    User,
     Search,
     Bell,
     Trash2,
-    MapPin,
     Plus,
     CheckCircle2,
     XCircle,
     Clock3,
     Pencil,
-    X 
+    X,
+    Menu
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
+import Link from 'next/link';
 
 // --- HELPER DE DATA ---
 function parseApiDate(dateString: string | null | undefined): Date {
@@ -55,7 +53,6 @@ interface UnifiedSchedulingDTO {
     type: string;
 }
 
-// Interface para Notificações
 interface NotificationDTO {
     id: string;
     title: string;
@@ -65,30 +62,16 @@ interface NotificationDTO {
     time: string;
 }
 
-// --- COMPONENTES VISUAIS ---
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
-    <div
-        onClick={onClick}
-        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-            active 
-            ? 'bg-blue-600 text-white shadow-md' 
-            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-        }`}
-    >
-        <Icon size={20} />
-        <span className="font-medium text-sm">{label}</span>
-    </div>
-);
-
+// --- COMPONENTES VISUAIS (Atualizados para o novo design) ---
 const StatCard = ({ label, value, subtext, active }: { label: string, value: string | number, subtext?: string, active?: boolean }) => (
-    <div className={`p-5 rounded-2xl shadow-sm border transition-all ${
+    <div className={`p-6 rounded-2xl shadow-sm border transition-all duration-300 ${
         active 
-        ? 'bg-blue-600 text-white border-blue-600' 
+        ? 'bg-[#003399] text-white border-[#003399]' 
         : 'bg-white text-slate-700 border-slate-100 hover:shadow-md'
     }`}>
-        <p className={`text-sm font-medium mb-1 ${active ? 'text-blue-100' : 'text-slate-500'}`}>{label}</p>
+        <p className={`text-sm font-medium mb-2 ${active ? 'text-blue-100' : 'text-slate-500'}`}>{label}</p>
         <h3 className="text-3xl font-bold">{value}</h3>
-        {subtext && <p className={`text-xs mt-2 ${active ? 'text-blue-200' : 'text-slate-400'}`}>{subtext}</p>}
+        {subtext && <p className={`text-xs mt-2 ${active ? 'text-blue-200/80' : 'text-slate-400'}`}>{subtext}</p>}
     </div>
 );
 
@@ -116,14 +99,13 @@ function CollaboratorDashboard() {
     const [editEndTime, setEditEndTime] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-    // --- ESTADOS DE NOTIFICAÇÃO (SININHO) ---
+    // --- ESTADOS DE NAVEGAÇÃO E BUSCA ---
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
-
-    // --- ESTADOS DA BUSCA ---
     const [searchTerm, setSearchTerm] = useState('');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // 1. Função que busca Notificações
+    // --- LÓGICA DE NOTIFICAÇÕES ---
     const fetchNotifications = async () => {
         if (!token) return;
         try {
@@ -148,7 +130,6 @@ function CollaboratorDashboard() {
         }
     };
 
-    // 2. POLLING NOTIFICAÇÕES (30s)
     useEffect(() => {
         fetchNotifications();
         const interval = setInterval(() => {
@@ -193,9 +174,9 @@ function CollaboratorDashboard() {
 
     const getStatusStyles = (status: string) => {
         switch (status) {
-            case 'APPROVED': return 'bg-green-100 text-green-700 border-green-200';
-            case 'REJECTED': return 'bg-red-100 text-red-700 border-red-200';
-            default: return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'APPROVED': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'REJECTED': return 'bg-red-50 text-red-700 border-red-200';
+            default: return 'bg-amber-50 text-amber-700 border-amber-200';
         }
     };
 
@@ -218,52 +199,35 @@ function CollaboratorDashboard() {
 
     const getReservationStyles = (status: string) => {
         switch (status) {
-            case 'CONFIRMED': case 'APPROVED': return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+            case 'CONFIRMED': case 'APPROVED': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
             case 'REJECTED': return 'bg-red-50 text-red-600 border border-red-200';
             case 'PENDING': default: return 'bg-amber-50 text-amber-600 border border-amber-200';
         }
     };
 
-    // --- HELPER DE DATA CORRIGIDO ---
-    
     const formatReservationDate = (dateString: string) => {
         const date = parseApiDate(dateString);
         if (isNaN(date.getTime())) return 'Data n/d';
-        
-        // REMOVI O 'timeZone: UTC'. Agora ele usa o horário do seu computador (Brasil)
-        return date.toLocaleDateString('pt-BR', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric' 
-        });
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     const formatTime = (dateString: string) => {
         const date = parseApiDate(dateString);
         if (isNaN(date.getTime())) return '--:--';
-        
-        // REMOVI O 'timeZone: UTC'. Agora 12:00 UTC vira 09:00 BRT automaticamente
-        return date.toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     };
 
-    // --- REGRAS DE NEGÓCIO ---
     const canEditReservation = (status: string) => status === 'PENDING';
-    
     const canCancelReservation = (startAt: string) => {
         const eventDate = parseApiDate(startAt);
         const now = new Date();
         const diffInMs = eventDate.getTime() - now.getTime();
-        const hours48InMs = 48 * 60 * 60 * 1000;
-        return diffInMs > hours48InMs;
+        return diffInMs > (48 * 60 * 60 * 1000);
     };
 
     // --- FETCHES DE DADOS ---
     const fetchHoursRequests = async () => {
         if (!token) return;
-        // setIsLoadingHours(true); // Comentado para não piscar a tela no polling
         try {
             const response = await fetch('/collaborator/hours-requests', { headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) { const data = await response.json(); setMyHoursRequests(data.content || []); }
@@ -272,7 +236,6 @@ function CollaboratorDashboard() {
 
     const fetchUnifiedSchedulings = async () => {
         if (!token) return;
-        // setIsLoadingReservations(true); // Comentado para não piscar a tela no polling
         try {
             const response = await fetch('/collaborator/unified-scheduling', { headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) { const data = await response.json(); setUnifiedSchedulings(data.content || []); }
@@ -318,7 +281,6 @@ function CollaboratorDashboard() {
         } catch (e) { console.error(e); alert("Erro de conexão."); }
     };
 
-    // --- LÓGICA DE EDIÇÃO ---
     const handleEditClick = (reservation: UnifiedSchedulingDTO) => {
         setEditingId(reservation.id);
         setEditName(reservation.name);
@@ -354,119 +316,100 @@ function CollaboratorDashboard() {
     };
 
     const handleLogout = () => {
-    // Chama a função logout do contexto (que limpa o localStorage e os estados)
-    if (logout) {
-        logout();
-    } else {
-        // Fallback de segurança caso a função não seja importada
-        localStorage.removeItem('token');
-    }
-    
-    // Usa o replace em vez de push para impedir a volta pela seta do navegador
-    router.replace('/'); 
-};
+        if (logout) logout();
+        else localStorage.removeItem('token');
+        router.replace('/'); 
+    };
 
-    // --- POLLING DE DADOS (AQUI ESTÁ A MUDANÇA) ---
     useEffect(() => {
-        // 1. Busca inicial
         fetchHoursRequests();
         fetchUnifiedSchedulings();
-
-        // 2. Configura o intervalo para 60 segundos (1 minuto)
         const interval = setInterval(() => {
             fetchHoursRequests();
             fetchUnifiedSchedulings();
         }, 60000); 
-
-        // 3. Limpa ao sair
         return () => clearInterval(interval);
     }, [token]);
 
     const approvedHours = myHoursRequests.filter(r => r.status === 'APPROVED').reduce((acc, curr) => acc + (Number(curr.requestedHours) || 0), 0);
 
-    const sortedSchedulings = [...unifiedSchedulings].sort((a, b) => {
-        if (a.status === 'REJECTED' && b.status !== 'REJECTED') return 1;
-        if (a.status !== 'REJECTED' && b.status === 'REJECTED') return -1;
-        return parseApiDate(a.startAt).getTime() - parseApiDate(b.startAt).getTime();
-    });
-
-    // --- ORDENAÇÃO E FILTRO ---
     const filteredSchedulings = [...unifiedSchedulings]
         .sort((a, b) => {
-            // Mantém a ordenação que fizemos antes
             if (a.status === 'REJECTED' && b.status !== 'REJECTED') return 1;
             if (a.status !== 'REJECTED' && b.status === 'REJECTED') return -1;
             return parseApiDate(a.startAt).getTime() - parseApiDate(b.startAt).getTime();
         })
         .filter((item) => {
-            // Se a busca estiver vazia, retorna tudo
             if (!searchTerm) return true;
-            
             const searchLower = searchTerm.toLowerCase();
-            
-            // Busca pelo Nome do Espaço (venueName)
-            const matchesVenue = item.venueName?.toLowerCase().includes(searchLower);
-            
-            // Busca pelo Nome do Agendamento (name) - se existir
-            const matchesName = item.name?.toLowerCase().includes(searchLower);
-            
-            // Busca pelo Status (ex: "pendente") - Opcional
-            const matchesStatus = formatReservationStatus(item.status).toLowerCase().includes(searchLower);
-
-            return matchesVenue || matchesName || matchesStatus;
+            return item.venueName?.toLowerCase().includes(searchLower) || 
+                   item.name?.toLowerCase().includes(searchLower) || 
+                   formatReservationStatus(item.status).toLowerCase().includes(searchLower);
         });
 
     return (
-        <div className="flex h-screen bg-[#F4F7FE] font-sans text-slate-800 overflow-hidden relative">
-            {/* SIDEBAR - MANTIDO IGUAL */}
-            <aside className="w-64 bg-[#111C44] flex-shrink-0 flex flex-col py-6 px-4 text-white">
-                <div className="flex items-center gap-3 px-2 mb-10">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg">M</div>
-                    <span className="text-xl font-bold tracking-wide">SPACE MASTER</span>
-                </div>
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem icon={LayoutDashboard} label="Dashboard" active onClick={() => router.push('/collaborator-dashboard')} />
-                    <SidebarItem icon={CalendarDays} label="Reservas" onClick={() => router.push('/calendar')} />
-                    <SidebarItem icon={MapPin} label="Espaços" onClick={() => router.push('/our-spaces')} />
-                    <SidebarItem icon={Clock} label="Horas Extras" onClick={() => {}} />
-                    <SidebarItem icon={User} label="Perfil" onClick={() => router.push('/profile')} />
-                </nav>
-                <div className="mt-auto pt-6 border-t border-slate-700">
-                    <SidebarItem icon={LogOut} label="Sair" onClick={handleLogout} />
-                </div>
-            </aside>
-
-            {/* MAIN - MANTIDO IGUAL */}
-            <main className="flex-1 flex flex-col overflow-hidden relative z-0">
-                <header className="h-20 bg-[#F4F7FE] flex items-center justify-between px-8 pt-4 relative z-20">
-                    <div>
-                        <p className="text-sm text-slate-500">Páginas / Dashboard</p>
-                        <h2 className="text-2xl font-bold text-[#1B2559]">Colaborador</h2>
-                    </div>
-                    <div className="flex items-center gap-4 bg-white p-2 rounded-full shadow-sm px-4">
-                        <div className="relative bg-[#F4F7FE] rounded-full px-3 py-2 flex items-center gap-2">
-                            <Search size={16} className="text-slate-500" />
-                            <input 
-                                placeholder="Buscar espaço ou evento..." 
-                                className="bg-transparent border-none text-sm outline-none w-48 placeholder-slate-500" // Aumentei um pouco a largura (w-48)
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
+            
+            {/* --- TOP NAVBAR (ESTILO ARCHDAILY/BRISA) --- */}
+            <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
+                <div className="flex items-center gap-4 md:gap-6">
+                    <button 
+                        className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <Menu size={28} strokeWidth={1.5} />
+                    </button>
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/collaborator-dashboard')}>
+                        <div className="flex flex-col items-center leading-none text-[#003399]">
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
+                                <path d="M4 14h8v12"/>
+                                <path d="M12 2v12l8-4"/>
+                            </svg>
                         </div>
-                        
-                        {/* SININHO - Lógica já estava certa */}
-                        <div className="relative">
-                            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-1 text-slate-400 hover:text-blue-600 transition-colors outline-none">
-                                <Bell size={20} />
-                                {unreadCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>}
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
+                            brisa
+                        </span>
+                    </div>
+                </div>
+
+                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar reservas ou espaços..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
+                        <Link href="/collaborator-dashboard" className="text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
+                    </nav>
+                    
+                    <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
+                    
+                    <div className="flex items-center gap-5">
+                        {/* SININHO DE NOTIFICAÇÕES */}
+                        <div className="relative flex items-center">
+                            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
+                                <Bell size={18} />
+                                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>}
                             </button>
                             {isNotifOpen && (
                                 <>
                                     <div className="fixed inset-0 z-30" onClick={() => setIsNotifOpen(false)}></div>
-                                    <div className="absolute right-[-60px] mt-4 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="absolute right-0 top-12 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                                            <h4 className="font-bold text-[#1B2559] text-sm">Notificações</h4>
-                                            {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-xs text-blue-600 hover:underline">Limpar tudo</button>}
+                                            <h4 className="font-bold text-slate-800 text-sm">Notificações</h4>
+                                            {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-xs text-[#003399] hover:underline">Limpar tudo</button>}
                                         </div>
                                         <div className="max-h-[300px] overflow-y-auto">
                                             {notifications.length === 0 ? (
@@ -475,9 +418,9 @@ function CollaboratorDashboard() {
                                                 notifications.map(notif => (
                                                     <div key={notif.id} onClick={() => handleMarkAsRead(notif.id)} className={`p-4 border-b border-slate-50 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 ${notif.read ? 'opacity-60' : 'bg-blue-50/30'}`}>
                                                         <div className="flex gap-3">
-                                                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'SUCCESS' ? 'bg-green-500' : notif.type === 'WARNING' ? 'bg-yellow-500' : notif.type === 'ERROR' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'SUCCESS' ? 'bg-emerald-500' : notif.type === 'WARNING' ? 'bg-amber-500' : notif.type === 'ERROR' ? 'bg-red-500' : 'bg-[#003399]'}`}></div>
                                                             <div>
-                                                                <h5 className={`text-sm font-bold mb-0.5 ${notif.read ? 'text-slate-600' : 'text-[#1B2559]'}`}>{notif.title}</h5>
+                                                                <h5 className={`text-sm font-bold mb-0.5 ${notif.read ? 'text-slate-600' : 'text-slate-800'}`}>{notif.title}</h5>
                                                                 <p className="text-xs text-slate-500 leading-relaxed">{notif.message}</p>
                                                                 <span className="text-[10px] text-slate-400 mt-2 block font-medium">{notif.time}</span>
                                                             </div>
@@ -491,50 +434,87 @@ function CollaboratorDashboard() {
                             )}
                         </div>
 
-                        <div className="w-8 h-8 rounded-full bg-blue-900 text-white flex items-center justify-center text-xs font-bold">
-                            {user?.name?.charAt(0) || 'U'}
-                        </div>
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {user?.name?.split(' ')[0] || 'Usuário'}
+                        </span>
+                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">
+                            Sair
+                        </button>
                     </div>
-                </header>
+                </div>
+            </header>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* --- MENU MOBILE EXPANSÍVEL --- */}
+            {isMobileMenuOpen && (
+                <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
+                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar reservas..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
+                        <Link href="/collaborator-dashboard" className="text-[#003399]">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399]">Reservas</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
+                    </nav>
+                </div>
+            )}
+
+            {/* --- MAIN CONTENT --- */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+                    
+                    {/* Cabeçalho da Página */}
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800">Olá, {user?.name?.split(' ')[0] || 'Colaborador'}</h2>
+                        <p className="text-slate-500 mt-1 text-sm">Acompanhe suas reservas e solicitações de horas.</p>
+                    </div>
+
+                    {/* Cards de Estatísticas */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                         <StatCard label="Minhas Reservas" value={unifiedSchedulings.length} active={true} subtext="Histórico total" />
                         <StatCard label="Próximas Reservas" value={unifiedSchedulings.filter(r => { const d = parseApiDate(r.startAt); return d >= new Date() && r.status !== 'REJECTED'; }).length} />
                         <StatCard label="Horas Aprovadas" value={`${approvedHours.toFixed(1).replace('.0', '')}h`} subtext="Total acumulado" />
-                        <StatCard label="Solicitações Totais" value={myHoursRequests.length} subtext="Histórico de pedidos" />
+                        <StatCard label="Solicitações" value={myHoursRequests.length} subtext="Histórico de pedidos" />
                     </div>
 
-                    <div className="w-full bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                    {/* Lista de Reservas */}
+                    <div className="w-full bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-[#1B2559]">Minhas Próximas Reservas</h3>
-                            <button onClick={() => router.push('/calendar')} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition">
+                            <h3 className="text-xl font-bold text-slate-800">Próximas Reservas</h3>
+                            <button onClick={() => router.push('/calendar')} className="flex items-center gap-2 px-5 py-2.5 bg-[#003399] text-white rounded-lg text-sm font-medium hover:bg-[#002266] transition-colors">
                                 <Plus size={16} /> Nova Reserva
                             </button>
                         </div>
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2">
-                            {isLoadingReservations ? <p>Carregando...</p> : filteredSchedulings.length === 0 ? <p className="text-slate-400 text-sm">Sem reservas encontradas.</p> : 
+                            {isLoadingReservations ? <p className="text-slate-500">Buscando reservas...</p> : filteredSchedulings.length === 0 ? <p className="text-slate-400 text-sm">Nenhuma reserva encontrada.</p> : 
                                 filteredSchedulings.map((res) => {
                                     const isEditable = canEditReservation(res.status);
                                     const isCancelable = canCancelReservation(res.startAt);
                                     return (
-                                        <div key={res.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border border-slate-100 hover:shadow-md transition-shadow bg-white gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 ${['CONFIRMED', 'APPROVED'].includes(res.status) ? 'bg-blue-50' : 'bg-gray-50 text-gray-400'}`}>
+                                        <div key={res.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl border border-slate-100 hover:shadow-md transition-shadow bg-white gap-4">
+                                            <div className="flex items-center gap-5">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[#003399] ${['CONFIRMED', 'APPROVED'].includes(res.status) ? 'bg-indigo-50' : 'bg-slate-50 text-slate-400'}`}>
                                                     <CalendarDays size={24} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-[#1B2559] text-base">{res.venueName}</h4>
+                                                    <h4 className="font-bold text-slate-800 text-base">{res.venueName}</h4>
                                                     <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                                        <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">{formatReservationDate(res.startAt)}</span>
+                                                        <span className="bg-slate-50 border border-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">{formatReservationDate(res.startAt)}</span>
                                                         <span>•</span>
                                                         <span>{formatTime(res.startAt)} - {formatTime(res.endAt)}</span>
                                                     </div>
-                                                    {res.name && <p className="text-xs text-slate-400 mt-1 italic">"{res.name}"</p>}
+                                                    {res.name && <p className="text-xs text-slate-400 mt-1.5 italic">"{res.name}"</p>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4 justify-between md:justify-end w-full md:w-auto">
-                                                <span className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${getReservationStyles(res.status)}`}>
+                                                <span className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border ${getReservationStyles(res.status)}`}>
                                                     {(res.status === 'CONFIRMED' || res.status === 'APPROVED') && <CheckCircle2 size={12} />}
                                                     {res.status === 'REJECTED' && <XCircle size={12} />}
                                                     {res.status === 'PENDING' && <Clock3 size={12} />}
@@ -542,8 +522,8 @@ function CollaboratorDashboard() {
                                                 </span>
                                                 {res.status !== 'REJECTED' && (
                                                     <div className="flex items-center gap-1">
-                                                        <button onClick={() => isEditable && handleEditClick(res)} disabled={!isEditable} title={isEditable ? "Editar Reserva" : "Não é possível editar após aprovação"} className={`p-2 rounded-lg transition ${isEditable ? 'text-slate-400 hover:text-blue-600 hover:bg-blue-50' : 'text-slate-200 cursor-not-allowed'}`}><Pencil size={18} /></button>
-                                                        <button onClick={() => isCancelable && handleDeleteReservation(res.id)} disabled={!isCancelable} title={isCancelable ? "Cancelar Reserva" : "Cancelamento permitido apenas com 48h de antecedência"} className={`p-2 rounded-lg transition ${isCancelable ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-200 cursor-not-allowed'}`}><Trash2 size={18} /></button>
+                                                        <button onClick={() => isEditable && handleEditClick(res)} disabled={!isEditable} className={`p-2 rounded-lg transition ${isEditable ? 'text-slate-400 hover:text-[#003399] hover:bg-indigo-50' : 'text-slate-200 cursor-not-allowed'}`}><Pencil size={18} /></button>
+                                                        <button onClick={() => isCancelable && handleDeleteReservation(res.id)} disabled={!isCancelable} className={`p-2 rounded-lg transition ${isCancelable ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-200 cursor-not-allowed'}`}><Trash2 size={18} /></button>
                                                     </div>
                                                 )}
                                             </div>
@@ -554,28 +534,35 @@ function CollaboratorDashboard() {
                         </div>
                     </div>
 
+                    {/* Solicitações de Horas Extras */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                             <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold text-[#1B2559]">Status de Solicitações</h3></div>
+                        <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100">
+                             <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-slate-800">Status de Solicitações</h3></div>
                              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                                {isLoadingHours ? <p>Carregando...</p> : myHoursRequests.length === 0 ? <p className="text-slate-400 text-sm">Nenhuma solicitação.</p> :
+                                {isLoadingHours ? <p className="text-slate-500">Buscando...</p> : myHoursRequests.length === 0 ? <p className="text-slate-400 text-sm">Nenhuma solicitação no histórico.</p> :
                                 myHoursRequests.map(req => (
-                                    <div key={req.additionalHoursRequestId} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                                    <div key={req.additionalHoursRequestId} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:shadow-sm transition-shadow">
                                         <div className="flex flex-col">
-                                            <div className="flex items-center gap-2"><span className="font-bold text-[#1B2559] text-lg">{req.requestedHours}h</span><span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Solicitadas</span></div>
-                                            <p className="text-sm text-slate-500 truncate max-w-[250px] md:max-w-xs" title={req.justification}>{req.justification}</p>
+                                            <div className="flex items-center gap-2"><span className="font-bold text-[#003399] text-lg">{req.requestedHours}h</span><span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Solicitadas</span></div>
+                                            <p className="text-sm text-slate-500 truncate max-w-[250px] md:max-w-xs mt-1" title={req.justification}>{req.justification}</p>
                                         </div>
                                         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${getStatusStyles(req.status)}`}>{getStatusIcon(req.status)}<span>{formatStatus(req.status)}</span></div>
                                     </div>
                                 ))}
                              </div>
                         </div>
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                            <h3 className="text-lg font-bold text-[#1B2559] mb-2">Nova Solicitação</h3>
-                            <form onSubmit={handleSubmitHoursRequest} className="space-y-3">
-                                <input type="number" placeholder="Qtd. Horas" className="w-full bg-[#F4F7FE] rounded-xl px-4 py-3 outline-none text-sm" value={newRequestHours} onChange={(e) => setNewRequestHours(e.target.value)} />
-                                <textarea placeholder="Justificativa..." rows={3} className="w-full bg-[#F4F7FE] rounded-xl px-4 py-3 outline-none text-sm resize-none" value={newRequestJustification} onChange={(e) => setNewRequestJustification(e.target.value)} />
-                                <button disabled={isSubmittingHours} className="w-full bg-blue-600 text-white rounded-xl py-3 font-medium hover:bg-blue-700 transition">{isSubmittingHours ? 'Enviando...' : 'Enviar'}</button>
+                        <div className="bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100">
+                            <h3 className="text-xl font-bold text-slate-800 mb-6">Nova Solicitação</h3>
+                            <form onSubmit={handleSubmitHoursRequest} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Quantidade de Horas</label>
+                                    <input type="number" placeholder="Ex: 4" className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-4 py-3 outline-none text-sm transition-all" value={newRequestHours} onChange={(e) => setNewRequestHours(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Justificativa</label>
+                                    <textarea placeholder="Motivo da solicitação..." rows={3} className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-4 py-3 outline-none text-sm resize-none transition-all" value={newRequestJustification} onChange={(e) => setNewRequestJustification(e.target.value)} />
+                                </div>
+                                <button disabled={isSubmittingHours} className="w-full bg-[#003399] text-white rounded-lg py-3 font-medium hover:bg-[#002266] transition-colors mt-2">{isSubmittingHours ? 'Enviando...' : 'Enviar Pedido'}</button>
                             </form>
                         </div>
                     </div>
@@ -584,34 +571,34 @@ function CollaboratorDashboard() {
 
             {/* --- MODAL DE EDIÇÃO --- */}
             {isEditModalOpen && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-[#1B2559]">Editar Agendamento</h3>
-                            <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-slate-400 transition"><X size={20} /></button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="text-2xl font-bold text-slate-800">Editar Reserva</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
                         </div>
-                        <form onSubmit={handleSaveEdit} className="space-y-4">
+                        <form onSubmit={handleSaveEdit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Evento</label>
-                                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" />
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome do Evento</label>
+                                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition-all bg-[#F0F2F5] focus:bg-white" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
-                                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-600" />
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Data</label>
+                                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition-all bg-[#F0F2F5] focus:bg-white text-slate-700" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Início</label>
-                                    <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-600" />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Início</label>
+                                    <input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition-all bg-[#F0F2F5] focus:bg-white text-slate-700" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Fim</label>
-                                    <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-600" />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Fim</label>
+                                    <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition-all bg-[#F0F2F5] focus:bg-white text-slate-700" />
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition">Cancelar</button>
-                                <button type="submit" disabled={isSavingEdit} className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">{isSavingEdit ? 'Salvando...' : 'Salvar Alterações'}</button>
+                            <div className="flex gap-4 pt-6">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors">Cancelar</button>
+                                <button type="submit" disabled={isSavingEdit} className="flex-1 px-4 py-3 rounded-xl bg-[#003399] text-white font-medium hover:bg-[#002266] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md">{isSavingEdit ? 'Salvando...' : 'Salvar Alterações'}</button>
                             </div>
                         </form>
                     </div>
