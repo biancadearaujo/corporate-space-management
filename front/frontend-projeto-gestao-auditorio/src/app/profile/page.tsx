@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-    LayoutDashboard, CalendarDays, Clock, LogOut, User, Search, Bell, 
     MapPin, Edit2, Save, X, Mail, Phone, Building2, Briefcase, 
-    ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, AlertTriangle, CheckCircle2
+    ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, AlertTriangle, Search, Bell, Menu, User
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
+import Link from 'next/link';
 
 // --- 1. INTERFACES E HELPERS ---
 
@@ -42,32 +42,26 @@ const formatPhoneNumber = (value: string) => {
         .replace(/(\d)(\d{4})$/, '$1-$2');
 };
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
-    <div onClick={onClick} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${active ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-        <Icon size={20} />
-        <span className="font-medium text-sm">{label}</span>
-    </div>
-);
-
 // --- 2. COMPONENTE PRINCIPAL ---
 
 function ProfilePage() {
-    const { user, token, signOut } = useAuth() as any;
+    const { user, token, logout } = useAuth() as any;
     const router = useRouter();
 
     // --- ESTADOS DE INTERFACE ---
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
     // Estados dos Modais
     const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
-    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // NOVO
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     
     // Estados de Ação
     const [isRequestingNewCompany, setIsRequestingNewCompany] = useState(false);
     const [isExitingCompany, setIsExitingCompany] = useState(false);
-    const [isSavingPassword, setIsSavingPassword] = useState(false); // NOVO
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
 
     // Estados de Notificação e Busca
     const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -78,7 +72,7 @@ function ProfilePage() {
     const [newCompanyCnpj, setNewCompanyCnpj] = useState('');
     const [newCompanyEmail, setNewCompanyEmail] = useState('');
     
-    // Estado para Troca de Senha (NOVO)
+    // Estado para Troca de Senha
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
 
     // --- ESTADOS DE DADOS ---
@@ -204,11 +198,17 @@ function ProfilePage() {
     // --- 5. HANDLERS GERAIS ---
 
     const handleLogout = () => {
-        if (signOut) signOut();
-        localStorage.clear();
-        sessionStorage.clear();
-        document.cookie.split(";").forEach((c) => { document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); });
-        router.push('/');
+        if (logout) logout();
+        else localStorage.removeItem('token');
+        router.replace('/'); 
+    };
+
+    const handleDashboardClick = () => {
+        const roles = user?.roles || []; 
+        if (roles.includes('ROLE_ADMIN')) router.push('/admin-dashboard');
+        else if (roles.includes('ROLE_MANAGER')) router.push('/manager-dashboard');
+        else if (roles.includes('ROLE_COLLABORATOR')) router.push('/collaborator-dashboard');
+        else router.push('/');
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -239,7 +239,7 @@ function ProfilePage() {
         } catch (error) { console.error(error); alert("Erro de conexão."); } finally { setIsLoading(false); }
     };
 
-    // --- Handler: Troca de Senha (NOVO) ---
+    // --- Handler: Troca de Senha ---
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -254,7 +254,6 @@ function ProfilePage() {
 
         setIsSavingPassword(true);
         try {
-            // Chama o endpoint que criamos no backend
             const response = await fetch('/collaborator/user/change-password', {
                 method: 'PUT',
                 headers: { 
@@ -273,7 +272,6 @@ function ProfilePage() {
                 setPasswords({ current: '', new: '', confirm: '' });
             } else {
                 const errorText = await response.text(); 
-                // Se o backend retornar erro, geralmente é "Senha atual incorreta"
                 alert(`Erro: ${errorText || "Não foi possível alterar a senha."}`);
             }
         } catch (error) {
@@ -328,55 +326,67 @@ function ProfilePage() {
 
     // --- 6. RENDERIZAÇÃO ---
     return (
-        <div className="flex h-screen bg-[#F4F7FE] font-sans text-slate-800 overflow-hidden relative">
-            {/* SIDEBAR */}
-            <aside className="w-64 bg-[#111C44] flex-shrink-0 flex flex-col py-6 px-4 text-white">
-                <div className="flex items-center gap-3 px-2 mb-10">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg">M</div>
-                    <span className="text-xl font-bold tracking-wide">SPACE MASTER</span>
-                </div>
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem icon={LayoutDashboard} label="Dashboard" onClick={() => router.push('/collaborator-dashboard')} />
-                    <SidebarItem icon={CalendarDays} label="Reservas" onClick={() => router.push('/calendar')} />
-                    <SidebarItem icon={MapPin} label="Espaços" onClick={() => router.push('/our-spaces')} />
-                    <SidebarItem icon={Clock} label="Horas Extras" onClick={() => {}} />
-                    <SidebarItem icon={User} label="Perfil" active onClick={() => {}} />
-                </nav>
-                <div className="mt-auto pt-6 border-t border-slate-700">
-                    <SidebarItem icon={LogOut} label="Sair" onClick={handleLogout} />
-                </div>
-            </aside>
-
-            {/* MAIN CONTENT */}
-            <main className="flex-1 flex flex-col overflow-hidden relative z-0">
-                <header className="h-20 bg-[#F4F7FE] flex items-center justify-between px-8 pt-4 relative z-20">
-                    <div><p className="text-sm text-slate-500">Páginas / Perfil</p><h2 className="text-2xl font-bold text-[#1B2559]">Meu Perfil</h2></div>
-                    
-                    {/* HEADER DINÂMICO */}
-                    <div className="flex items-center gap-4 bg-white p-2 rounded-full shadow-sm px-4">
-                        <div className="relative bg-[#F4F7FE] rounded-full px-3 py-2 flex items-center gap-2">
-                            <Search size={16} className="text-slate-500" />
-                            <input 
-                                placeholder="Buscar..." 
-                                className="bg-transparent border-none text-sm outline-none w-32 placeholder-slate-500" 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={handleSearchSubmit}
-                            />
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
+            
+            {/* --- TOP NAVBAR (ESTILO ARCHDAILY/BRISA) --- */}
+            <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
+                <div className="flex items-center gap-4 md:gap-6">
+                    <button 
+                        className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <Menu size={28} strokeWidth={1.5} />
+                    </button>
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={handleDashboardClick}>
+                        <div className="flex flex-col items-center leading-none text-[#003399]">
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
+                                <path d="M4 14h8v12"/>
+                                <path d="M12 2v12l8-4"/>
+                            </svg>
                         </div>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
+                            brisa
+                        </span>
+                    </div>
+                </div>
 
-                        <div className="relative">
-                            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-1 text-slate-400 hover:text-blue-600 transition-colors outline-none">
-                                <Bell size={20} />
-                                {unreadCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>}
+                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
+                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            placeholder="Buscar reservas ou espaços..." 
+                            className="bg-transparent border-none text-sm outline-none w-full placeholder-slate-500 text-slate-700" 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={handleSearchSubmit}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
+                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="#" className="text-[#003399] transition-colors">Perfil</Link>
+                    </nav>
+                    
+                    <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
+                    
+                    <div className="flex items-center gap-5">
+                        <div className="relative flex items-center">
+                            <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
+                                <Bell size={18} />
+                                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>}
                             </button>
                             {isNotifOpen && (
                                 <>
                                     <div className="fixed inset-0 z-30" onClick={() => setIsNotifOpen(false)}></div>
-                                    <div className="absolute right-[-60px] mt-4 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="absolute right-0 top-12 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                         <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                                            <h4 className="font-bold text-[#1B2559] text-sm">Notificações</h4>
-                                            {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-xs text-blue-600 hover:underline">Limpar tudo</button>}
+                                            <h4 className="font-bold text-slate-800 text-sm">Notificações</h4>
+                                            {notifications.length > 0 && <button onClick={handleClearNotifications} className="text-xs text-[#003399] hover:underline">Limpar tudo</button>}
                                         </div>
                                         <div className="max-h-[300px] overflow-y-auto">
                                             {notifications.length === 0 ? (
@@ -385,9 +395,9 @@ function ProfilePage() {
                                                 notifications.map(notif => (
                                                     <div key={notif.id} onClick={() => handleMarkAsRead(notif.id)} className={`p-4 border-b border-slate-50 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 ${notif.read ? 'opacity-60' : 'bg-blue-50/30'}`}>
                                                         <div className="flex gap-3">
-                                                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'SUCCESS' ? 'bg-green-500' : notif.type === 'WARNING' ? 'bg-yellow-500' : notif.type === 'ERROR' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'SUCCESS' ? 'bg-emerald-500' : notif.type === 'WARNING' ? 'bg-amber-500' : notif.type === 'ERROR' ? 'bg-red-500' : 'bg-[#003399]'}`}></div>
                                                             <div>
-                                                                <h5 className={`text-sm font-bold mb-0.5 ${notif.read ? 'text-slate-600' : 'text-[#1B2559]'}`}>{notif.title}</h5>
+                                                                <h5 className={`text-sm font-bold mb-0.5 ${notif.read ? 'text-slate-600' : 'text-slate-800'}`}>{notif.title}</h5>
                                                                 <p className="text-xs text-slate-500 leading-relaxed">{notif.message}</p>
                                                                 <span className="text-[10px] text-slate-400 mt-2 block font-medium">{notif.time}</span>
                                                             </div>
@@ -401,125 +411,254 @@ function ProfilePage() {
                             )}
                         </div>
 
-                        <div className="w-8 h-8 rounded-full bg-blue-900 text-white flex items-center justify-center text-xs font-bold">{formData.name?.charAt(0) || user?.name?.charAt(0) || 'U'}</div>
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {user?.name?.split(' ')[0] || 'Usuário'}
+                        </span>
+                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">
+                            Sair
+                        </button>
                     </div>
-                </header>
+                </div>
+            </header>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* --- MENU MOBILE EXPANSÍVEL --- */}
+            {isMobileMenuOpen && (
+                <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
+                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
+                        <Search size={20} className="text-slate-500 mr-3" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={handleSearchSubmit}
+                        />
+                    </div>
+                    <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
+                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399]">Dashboard</Link>
+                        <Link href="/calendar" className="hover:text-[#003399]">Reservas</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
+                        <Link href="#" className="text-[#003399]">Perfil</Link>
+                    </nav>
+                </div>
+            )}
+
+            {/* MAIN CONTENT */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
+                    
                     {/* HEADER DO PERFIL */}
-                    <div className="bg-white rounded-[20px] shadow-sm border border-slate-100 relative overflow-hidden">
-                        <div className="h-40 bg-gradient-to-r from-blue-600 to-blue-400 w-full"></div>
+                    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+                        {/* Area Colorida / Capa (Substituído o gradiente escuro por algo limpo) */}
+                        <div className="h-32 bg-gradient-to-r from-blue-50 to-[#F0F2F5] w-full border-b border-slate-100"></div>
+                        
                         <div className="px-8 pb-8">
-                            <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-12 gap-6">
-                                <div className="w-32 h-32 rounded-full bg-white p-1.5 shadow-xl z-10">
-                                    <div className="w-full h-full rounded-full bg-[#111C44] text-white flex items-center justify-center text-4xl font-bold border-4 border-white">
+                            <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-10 gap-6">
+                                
+                                {/* Avatar */}
+                                <div className="w-24 h-24 rounded-2xl bg-white p-1 shadow-md z-10">
+                                    <div className="w-full h-full rounded-xl bg-gradient-to-br from-[#003399] to-[#0055ff] text-white flex items-center justify-center text-3xl font-bold border border-white">
                                         {isFetching ? '...' : (formData.name?.charAt(0) || 'U')}
                                     </div>
                                 </div>
+                                
+                                {/* Info Principal */}
                                 <div className="flex-1 text-center md:text-left mb-2">
-                                    <h3 className="text-2xl font-bold text-[#1B2559]">{isFetching ? 'Carregando...' : formData.name}</h3>
-                                    <p className="text-slate-500 font-medium">{formData.role}</p>
+                                    <h3 className="text-2xl font-bold text-slate-800">{isFetching ? 'Carregando...' : formData.name}</h3>
+                                    <p className="text-slate-500 font-medium mt-0.5">{formData.role}</p>
                                 </div>
-                                <div className="flex gap-8 md:gap-12 py-4 px-8 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <div className="flex flex-col items-center"><span className="text-2xl font-bold text-[#1B2559]">{stats.reservationsCount}</span><span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Reservas</span></div>
+                                
+                                {/* Estatísticas Rápidas */}
+                                <div className="flex gap-10 py-4 px-8 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-2xl font-bold text-slate-800">{stats.reservationsCount}</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Reservas</span>
+                                    </div>
                                     <div className="w-px h-10 bg-slate-200"></div>
-                                    <div className="flex flex-col items-center"><span className="text-2xl font-bold text-[#1B2559]">{stats.approvedHours.toFixed(1).replace('.0', '')}h</span><span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Horas</span></div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-2xl font-bold text-slate-800">{stats.approvedHours.toFixed(1).replace('.0', '')}h</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Horas</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* FORMULÁRIO */}
-                        <div className="lg:col-span-2 bg-white rounded-[20px] p-6 shadow-sm border border-slate-100 h-full">
-                            <div className="flex justify-between items-center mb-6">
-                                <div><h3 className="text-lg font-bold text-[#1B2559]">Informações Gerais</h3><p className="text-sm text-slate-500">Gerencie seus dados pessoais e profissionais.</p></div>
+                        {/* FORMULÁRIO DE INFORMAÇÕES */}
+                        <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100 h-full">
+                            <div className="flex justify-between items-center mb-8">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">Informações Pessoais</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Mantenha seus dados de contato sempre atualizados.</p>
+                                </div>
                                 {!isEditing ? (
-                                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-100 transition"><Edit2 size={16} /> Editar</button>
+                                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-[#003399] border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-100 transition"><Edit2 size={16} /> Editar</button>
                                 ) : (
                                     <div className="flex gap-2">
                                         <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition"><X size={16} /> Cancelar</button>
-                                        <button onClick={handleSaveProfile} disabled={isLoading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition shadow-md shadow-blue-500/20"><Save size={16} /> {isLoading ? 'Salvando...' : 'Salvar'}</button>
+                                        <button onClick={handleSaveProfile} disabled={isLoading} className="flex items-center gap-2 px-5 py-2 bg-[#003399] text-white rounded-xl text-sm font-medium hover:bg-[#002266] transition shadow-md"><Save size={16} /> {isLoading ? 'Salvando...' : 'Salvar'}</button>
                                     </div>
                                 )}
                             </div>
+                            
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Nome Completo</label><div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-blue-500 bg-white' : 'border-slate-100 bg-slate-50'}`}><User size={18} className="text-slate-400 mr-3" /><input type="text" name="name" disabled={!isEditing} value={formData.name} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" /></div></div>
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Email Corporativo</label><div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 cursor-not-allowed"><Mail size={18} className="text-slate-400 mr-3" /><input type="email" disabled value={formData.email} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" /></div></div>
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Telefone</label><div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-blue-500 bg-white' : 'border-slate-100 bg-slate-50'}`}><Phone size={18} className="text-slate-400 mr-3" /><input type="text" name="phone" disabled={!isEditing} value={formData.phone} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" placeholder="(xx) xxxxx-xxxx" /></div></div>
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Empresa</label><div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-slate-50 cursor-not-allowed"><Building2 size={18} className="text-slate-400 mr-3" /><input type="text" disabled value={formData.company} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" /></div></div>
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Cargo</label><div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-blue-500 bg-white' : 'border-slate-100 bg-slate-50'}`}><Briefcase size={18} className="text-slate-400 mr-3" /><input type="text" disabled value={formData.role} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium disabled:text-slate-500" /></div></div>
-                                <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Departamento</label><div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-blue-500 bg-white' : 'border-slate-100 bg-slate-50'}`}><MapPin size={18} className="text-slate-400 mr-3" /><input type="text" name="department" disabled={!isEditing} value={formData.department} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" /></div></div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nome Completo</label>
+                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                                        <User size={18} className="text-slate-400 mr-3" />
+                                        <input type="text" name="name" disabled={!isEditing} value={formData.name} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Email Corporativo</label>
+                                    <div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-[#F0F2F5] cursor-not-allowed">
+                                        <Mail size={18} className="text-slate-400 mr-3" />
+                                        <input type="email" disabled value={formData.email} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Telefone</label>
+                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                                        <Phone size={18} className="text-slate-400 mr-3" />
+                                        <input type="text" name="phone" disabled={!isEditing} value={formData.phone} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" placeholder="(xx) xxxxx-xxxx" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Empresa</label>
+                                    <div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-[#F0F2F5] cursor-not-allowed">
+                                        <Building2 size={18} className="text-slate-400 mr-3" />
+                                        <input type="text" disabled value={formData.company} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cargo</label>
+                                    <div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-slate-200 bg-white' : 'border-slate-100 bg-[#F0F2F5] cursor-not-allowed'}`}>
+                                        <Briefcase size={18} className="text-slate-400 mr-3" />
+                                        <input type="text" disabled value={formData.role} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departamento</label>
+                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                                        <MapPin size={18} className="text-slate-400 mr-3" />
+                                        <input type="text" name="department" disabled={!isEditing} value={formData.department} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
                         {/* CARDS LATERAIS */}
                         <div className="lg:col-span-1 flex flex-col gap-6">
-                            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-slate-100">
-                                <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-blue-600 rounded-lg text-white"><Building size={20} /></div><h4 className="font-bold text-[#1B2559]">Vínculo Corporativo</h4></div>
-                                <div className="mb-5 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">{formData.company ? formData.company.charAt(0) : 'E'}</div><div><p className="text-xs text-slate-400 font-semibold uppercase">Empresa Atual</p><p className="text-sm font-bold text-[#1B2559]">{formData.company}</p></div></div>
-                                <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-[#1B2559] text-white rounded-xl text-sm font-medium hover:bg-[#2c3b80] transition shadow-md shadow-blue-900/20"><ArrowRightLeft size={16} /> Gerenciar Vínculo</button>
+                            
+                            {/* Card: Vínculo */}
+                            <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-2 bg-indigo-50 rounded-xl text-[#003399]"><Building size={20} /></div>
+                                    <h4 className="font-bold text-slate-800 text-lg">Vínculo Corporativo</h4>
+                                </div>
+                                <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-500 shadow-sm">
+                                        {formData.company ? formData.company.charAt(0) : 'E'}
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Empresa Atual</p>
+                                        <p className="text-[15px] font-bold text-slate-800">{formData.company}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm">
+                                    <ArrowRightLeft size={16} /> Gerenciar Vínculo
+                                </button>
                             </div>
-                            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-slate-100">
-                                <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-blue-50 rounded-lg text-blue-600"><ShieldCheck size={20} /></div><h4 className="font-bold text-[#1B2559]">Segurança</h4></div>
-                                <p className="text-xs text-slate-500 mb-4 leading-relaxed">Mantenha sua conta segura alterando sua senha periodicamente.</p>
-                                {/* BOTÃO DE ALTERAR SENHA ATIVADO */}
-                                <button onClick={() => setIsPasswordModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition"><KeyRound size={16} /> Alterar Senha</button>
+                            
+                            {/* Card: Segurança */}
+                            <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-indigo-50 rounded-xl text-[#003399]"><ShieldCheck size={20} /></div>
+                                    <h4 className="font-bold text-slate-800 text-lg">Segurança</h4>
+                                </div>
+                                <p className="text-sm text-slate-500 mb-6 leading-relaxed">Mantenha sua conta segura alterando sua senha periodicamente.</p>
+                                <button onClick={() => setIsPasswordModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm">
+                                    <KeyRound size={16} /> Alterar Senha
+                                </button>
                             </div>
+
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* MODAL EMPRESA */}
+            {/* --- MODAL EMPRESA --- */}
             {isCompanyModalOpen && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200 relative">
-                        <button onClick={() => setIsCompanyModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full text-slate-400 transition"><X size={20} /></button>
-                        <div className="text-center mb-6">
-                            <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600"><Building size={28} /></div>
-                            <h3 className="text-xl font-bold text-[#1B2559]">Gerenciar Empresa</h3>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200 relative">
+                        <button onClick={() => setIsCompanyModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
+                        
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><Building size={32} /></div>
+                            <h3 className="text-2xl font-bold text-slate-800">Gerenciar Empresa</h3>
                             <p className="text-sm text-slate-500 mt-2">Cadastre-se em outra organização ou encerre seu vínculo atual.</p>
                         </div>
+
                         <form onSubmit={handleRequestNewCompany} className="space-y-4">
-                            <div><label className="block text-sm font-medium text-slate-700 mb-1">CNPJ da Nova Empresa</label><input type="text" placeholder="00.000.000/0001-00" value={newCompanyCnpj} onChange={(e) => setNewCompanyCnpj(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-center text-lg font-medium tracking-wide" /></div>
-                            <div><label className="block text-sm font-medium text-slate-700 mb-1">E-mail para esta nova conta</label><input type="email" placeholder="novo.email@exemplo.com" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" /><p className="text-xs text-slate-400 mt-1 ml-1">Necessário informar um e-mail diferente do atual.</p></div>
-                            <button type="submit" disabled={!newCompanyCnpj || !newCompanyEmail || isRequestingNewCompany} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed mt-2">{isRequestingNewCompany ? 'Enviando...' : 'Solicitar Acesso'}</button>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">CNPJ da Nova Empresa</label>
+                                <input type="text" placeholder="00.000.000/0001-00" value={newCompanyCnpj} onChange={(e) => setNewCompanyCnpj(e.target.value)} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition text-center text-lg font-medium tracking-wide" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-mail para nova conta</label>
+                                <input type="email" placeholder="novo.email@exemplo.com" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
+                                <p className="text-xs text-slate-400 mt-1.5 ml-1 font-medium">Necessário informar um e-mail diferente do atual.</p>
+                            </div>
+                            <button type="submit" disabled={!newCompanyCnpj || !newCompanyEmail || isRequestingNewCompany} className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+                                {isRequestingNewCompany ? 'Enviando...' : 'Solicitar Acesso'}
+                            </button>
                         </form>
-                        <div className="relative my-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-slate-400 font-medium">Área de Perigo</span></div></div>
-                        <button onClick={handleExitCompany} disabled={isExitingCompany} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-red-100 text-red-600 font-bold hover:bg-red-50 transition disabled:opacity-50">{isExitingCompany ? 'Saindo...' : <><Trash2 size={18} /> Sair da Empresa Atual</>}</button>
-                        <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700 flex items-start gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /><p>Ao sair da empresa, sua conta atual e dados vinculados a ela serão excluídos.</p></div>
+
+                        <div className="relative my-8">
+                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                            <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-wider text-[10px]">Área de Perigo</span></div>
+                        </div>
+
+                        <button onClick={handleExitCompany} disabled={isExitingCompany} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-red-100 text-red-600 font-bold hover:bg-red-50 transition disabled:opacity-50">
+                            {isExitingCompany ? 'Saindo...' : <><Trash2 size={18} /> Sair da Empresa Atual</>}
+                        </button>
+                        <div className="mt-4 bg-red-50/50 border border-red-100 rounded-xl p-3.5 text-xs text-red-700 flex items-start gap-2 font-medium">
+                            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                            <p>Ao sair da empresa, sua conta atual e dados vinculados a ela serão excluídos permanentemente.</p>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* MODAL ALTERAR SENHA (NOVO) */}
+            {/* --- MODAL ALTERAR SENHA --- */}
             {isPasswordModalOpen && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200 relative">
-                        <button onClick={() => setIsPasswordModalOpen(false)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full text-slate-400 transition"><X size={20} /></button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200 relative">
+                        <button onClick={() => setIsPasswordModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         
-                        <div className="text-center mb-6">
-                            <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600"><KeyRound size={28} /></div>
-                            <h3 className="text-xl font-bold text-[#1B2559]">Alterar Senha</h3>
-                            <p className="text-sm text-slate-500 mt-2">Para sua segurança, confirme sua senha atual antes de criar a nova.</p>
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><KeyRound size={32} /></div>
+                            <h3 className="text-2xl font-bold text-slate-800">Alterar Senha</h3>
+                            <p className="text-sm text-slate-500 mt-2">Confirme sua senha atual antes de criar uma nova.</p>
                         </div>
 
                         <form onSubmit={handleChangePassword} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Senha Atual</label>
-                                <input type="password" value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Senha Atual</label>
+                                <input type="password" value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nova Senha</label>
-                                <input type="password" value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nova Senha</label>
+                                <input type="password" value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar Nova Senha</label>
-                                <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirmar Nova Senha</label>
+                                <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
 
-                            <button type="submit" disabled={!passwords.current || !passwords.new || isSavingPassword} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/30 disabled:opacity-50 mt-2">
+                            <button type="submit" disabled={!passwords.current || !passwords.new || isSavingPassword} className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md disabled:opacity-50 mt-4">
                                 {isSavingPassword ? 'Salvando...' : 'Confirmar Alteração'}
                             </button>
                         </form>
@@ -530,4 +669,4 @@ function ProfilePage() {
     );
 }
 
-export default withAuth(ProfilePage, ['ROLE_COLLABORATOR']);
+export default withAuth(ProfilePage, ['ROLE_COLLABORATOR', 'ROLE_MANAGER', 'ROLE_ADMIN']);
