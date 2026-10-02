@@ -10,6 +10,7 @@ import com.t2m.stem.sistema.de.gestao.de.audit_rio.equipment.model.Equipment;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.equipment.repository.EquipmentRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.errors.NotFoundException;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.model.SchedulingRegisterRequest;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.model.dto.SchedulingUpdateDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.repository.SchedulingRegisterRequestRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.User;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.validator.UserValidator;
@@ -191,7 +192,7 @@ public class SchedulingCreatorValidator {
                     newUsage.setCompany(company);
                     newUsage.setUsageMonth(yearMonth);
                     newUsage.setVenueType(venueType);
-                        newUsage.setUsedHours(0.0);
+                    newUsage.setUsedHours(0.0);
                     return newUsage;
                 });
 
@@ -226,36 +227,9 @@ public class SchedulingCreatorValidator {
         }
     }
 
-    public void validateSubVenueAvailability(SchedulingRegisterRequest scheduling, Venue venue) {
-        SubVenue subVenue = scheduling.getSubVenue();
-
-        if (subVenue == null) {
-            throw new IllegalStateException
-                    ("SubVenue cannot be null for sub-venue specific validation. This indicates a logic error upstream.");
-        }
-
-        List<SchedulingRegisterRequest> existing = schedulingRegisterRequestRepository.findAllBySubVenueAndDate(
-                subVenue,
-                scheduling.getStartAt().toLocalDate()
-        );
-
-        if (venue.getVenueType() == VenueType.AUDITORIUM) {
-            for (SchedulingRegisterRequest s : existing) {
-                if (s.getBookingPeriod() == scheduling.getBookingPeriod()) {
-                    throw new IllegalArgumentException
-                            ("There is already a schedule for this period in the auditorium (subspace).");
-                }
-            }
-        } else {
-            for (SchedulingRegisterRequest s : existing) {
-                boolean overlaps = scheduling.getStartAt().isBefore(s.getEndAt())
-                        && scheduling.getEndAt().isAfter(s.getStartAt());
-                if (overlaps) {
-                    throw new IllegalArgumentException("There is already a schedule at that time for that subspace.");
-                }
-            }
-        }
-    }
+    // =================================================================================
+    // 1. MÉTODOS PARA CRIAÇÃO (Usam SchedulingRegisterRequest - 2 parâmetros)
+    // =================================================================================
 
     public void validateVenueAvailability(SchedulingRegisterRequest schedulingRequest, Venue venue) {
         List<SchedulingRegisterRequest> existing = schedulingRegisterRequestRepository.findAllByVenueAndDate(
@@ -265,19 +239,110 @@ public class SchedulingCreatorValidator {
 
         if (venue.getVenueType() == VenueType.AUDITORIUM) {
             for (SchedulingRegisterRequest s : existing) {
+                if (schedulingRequest.getSchedulingId() != null && schedulingRequest.getSchedulingId().equals(s.getSchedulingId())) {
+                    continue;
+                }
                 if (s.getBookingPeriod() == schedulingRequest.getBookingPeriod()) {
                     throw new IllegalArgumentException("There is already a schedule for this period in the auditorium.");
                 }
             }
         } else {
             for (SchedulingRegisterRequest s : existing) {
-                boolean overlaps =
-                        schedulingRequest.getStartAt().isBefore(s.getEndAt())
-                                && schedulingRequest.getEndAt().isAfter(s.getStartAt());
+                if (schedulingRequest.getSchedulingId() != null && schedulingRequest.getSchedulingId().equals(s.getSchedulingId())) {
+                    continue;
+                }
+                boolean overlaps = schedulingRequest.getStartAt().isBefore(s.getEndAt()) && schedulingRequest.getEndAt().isAfter(s.getStartAt());
                 if (overlaps) {
                     throw new IllegalArgumentException("There is already an appointment at that time.");
                 }
             }
+        }
+    }
+
+    public void validateSubVenueAvailability(SchedulingRegisterRequest scheduling, Venue venue) {
+        SubVenue subVenue = scheduling.getSubVenue();
+
+        if (subVenue == null) {
+            throw new IllegalStateException("SubVenue cannot be null for sub-venue specific validation. This indicates a logic error upstream.");
+        }
+
+        List<SchedulingRegisterRequest> existing = schedulingRegisterRequestRepository.findAllBySubVenueAndDate(
+                subVenue,
+                scheduling.getStartAt().toLocalDate()
+        );
+
+        if (venue.getVenueType() == VenueType.AUDITORIUM) {
+            for (SchedulingRegisterRequest s : existing) {
+                if (scheduling.getSchedulingId() != null && scheduling.getSchedulingId().equals(s.getSchedulingId())) {
+                    continue;
+                }
+                if (s.getBookingPeriod() == scheduling.getBookingPeriod()) {
+                    throw new IllegalArgumentException("There is already a schedule for this period in the auditorium (subspace).");
+                }
+            }
+        } else {
+            for (SchedulingRegisterRequest s : existing) {
+                if (scheduling.getSchedulingId() != null && scheduling.getSchedulingId().equals(s.getSchedulingId())) {
+                    continue;
+                }
+                boolean overlaps = scheduling.getStartAt().isBefore(s.getEndAt()) && scheduling.getEndAt().isAfter(s.getStartAt());
+                if (overlaps) {
+                    throw new IllegalArgumentException("There is already a schedule at that time for that subspace.");
+                }
+            }
+        }
+    }
+
+    // =================================================================================
+    // 2. MÉTODOS PARA ATUALIZAÇÃO (Usam SchedulingUpdateDTO - 3 parâmetros)
+    // =================================================================================
+
+    public void validateVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue, UUID currentRequestId) {
+        if (venue.isDivisible()) {
+            if (!venue.getSubVenues().isEmpty()) {
+                boolean hasConflicts = venue.getSubVenues().stream()
+                        .anyMatch(subVenue -> {
+                            List<SchedulingRegisterRequest> subConflicts = schedulingRegisterRequestRepository
+                                    .findConflictingSubVenueSchedules(subVenue, updateDTO.startAt(), updateDTO.endAt());
+                            if (currentRequestId != null) {
+                                subConflicts.removeIf(c -> currentRequestId.equals(c.getSchedulingId()));
+                            }
+                            return !subConflicts.isEmpty();
+                        });
+
+                if (hasConflicts) {
+                    throw new IllegalArgumentException("Venue has sub-venues with conflicts");
+                }
+            }
+        } else {
+            java.util.Optional<SchedulingRegisterRequest> conflicts = schedulingRegisterRequestRepository
+                    .findExactMatchIfNotRejectedOrCancelled(updateDTO.startAt(), updateDTO.endAt(), venue);
+
+            if (conflicts.isPresent() && !conflicts.get().getSchedulingId().equals(currentRequestId)) {
+                throw new IllegalArgumentException("Venue already has scheduling in this period");
+            }
+        }
+    }
+
+    public void validateSubVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue, UUID currentRequestId) {
+        if (!venue.isDivisible()) {
+            throw new IllegalArgumentException("Cannot book sub-venue on non-divisible venue");
+        }
+
+        SubVenue subVenue = venue.getSubVenues().stream()
+                .filter(sv -> sv.getSubVenueId().equals(updateDTO.subVenueId()))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("SubVenue not found"));
+
+        List<SchedulingRegisterRequest> conflicts = schedulingRegisterRequestRepository
+                .findConflictingSubVenueSchedules(subVenue, updateDTO.startAt(), updateDTO.endAt());
+
+        if (currentRequestId != null) {
+            conflicts.removeIf(c -> currentRequestId.equals(c.getSchedulingId()));
+        }
+
+        if (!conflicts.isEmpty()) {
+            throw new IllegalArgumentException("SubVenue already has scheduling in this period");
         }
     }
 

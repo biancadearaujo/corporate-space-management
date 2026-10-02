@@ -61,9 +61,9 @@ public class ManagerSchedulingValidator{
         }
 
         if (schedulingUpdateDTO.subVenueId() != null) {
-            schedulingUpdateValidator.validateSubVenueAvailability(schedulingUpdateDTO, venue);
+            schedulingUpdateValidator.validateSubVenueAvailability(schedulingUpdateDTO, venue, schedulingId);
         } else {
-            schedulingUpdateValidator.validateVenueAvailability(schedulingUpdateDTO, venue);
+            schedulingUpdateValidator.validateVenueAvailability(schedulingUpdateDTO, venue, schedulingId);
         }
     }
 }

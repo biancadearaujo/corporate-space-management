@@ -56,7 +56,7 @@ public class SchedulingValidator {
         if (schedulingUpdateDTO.startAt() != null && schedulingUpdateDTO.endAt() != null) {
             schedulingUpdateValidator.validateEndAt(schedulingUpdateDTO.startAt(), schedulingUpdateDTO.endAt());
         }
-        //todo:
+
         if (schedulingUpdateDTO.startAt() != null || schedulingUpdateDTO.endAt() != null) {
             schedulingUpdateValidator.validateOperatingHours(schedulingUpdateDTO, venue);
         }
@@ -74,9 +74,9 @@ public class SchedulingValidator {
         }
 
         if (schedulingUpdateDTO.subVenueId() != null) {
-            schedulingUpdateValidator.validateSubVenueAvailability(schedulingUpdateDTO, venue);
+            schedulingUpdateValidator.validateSubVenueAvailability(schedulingUpdateDTO, venue, schedulingId);
         } else {
-            schedulingUpdateValidator.validateVenueAvailability(schedulingUpdateDTO, venue);
+            schedulingUpdateValidator.validateVenueAvailability(schedulingUpdateDTO, venue, schedulingId);
         }
     }
 

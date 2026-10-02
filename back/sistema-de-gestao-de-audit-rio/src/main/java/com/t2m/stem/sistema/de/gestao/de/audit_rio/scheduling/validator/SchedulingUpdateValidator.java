@@ -85,7 +85,7 @@ public class SchedulingUpdateValidator {
     }
 
 
-    public void validateSubVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue) {
+    public void validateSubVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue, UUID currentSchedulingId) {
         if (!venue.isDivisible()) {
             throw new IllegalArgumentException("Cannot book sub-venue on non-divisible venue");
         }
@@ -101,22 +101,34 @@ public class SchedulingUpdateValidator {
                         updateDTO.startAt(),
                         updateDTO.endAt());
 
+        // Compara ID da requisição com ID da requisição
+        if (currentSchedulingId != null) {
+            conflicts.removeIf(c -> c.getSchedulingId().equals(currentSchedulingId));
+        }
+
         if (!conflicts.isEmpty()) {
             throw new IllegalArgumentException("SubVenue already has scheduling in this period");
         }
     }
 
-    public void validateVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue) {
+    public void validateVenueAvailability(SchedulingUpdateDTO updateDTO, Venue venue, UUID currentSchedulingId) {
         if (venue.isDivisible()) {
-            // Para venues divisíveis, verifica todos sub-venues
             if (!venue.getSubVenues().isEmpty()) {
                 boolean hasConflicts = venue.getSubVenues().stream()
-                        .anyMatch(subVenue -> !schedulingRegisterRequestRepository
-                                .findConflictingSubVenueSchedules(
-                                        subVenue,
-                                        updateDTO.startAt(),
-                                        updateDTO.endAt())
-                                .isEmpty());
+                        .anyMatch(subVenue -> {
+                            List<SchedulingRegisterRequest> subConflicts = schedulingRegisterRequestRepository
+                                    .findConflictingSubVenueSchedules(
+                                            subVenue,
+                                            updateDTO.startAt(),
+                                            updateDTO.endAt());
+
+                            // Compara ID da requisição com ID da requisição
+                            if (currentSchedulingId != null) {
+                                subConflicts.removeIf(c -> c.getSchedulingId().equals(currentSchedulingId));
+                            }
+
+                            return !subConflicts.isEmpty();
+                        });
 
                 if (hasConflicts) {
                     throw new IllegalArgumentException("Venue has sub-venues with conflicts");
@@ -129,7 +141,8 @@ public class SchedulingUpdateValidator {
                             updateDTO.endAt(),
                             venue);
 
-            if (conflicts.isPresent()) {
+            // Compara ID da requisição com ID da requisição em vez de venueId
+            if (conflicts.isPresent() && !conflicts.get().getSchedulingId().equals(currentSchedulingId)) {
                 throw new IllegalArgumentException("Venue already has scheduling in this period");
             }
         }
