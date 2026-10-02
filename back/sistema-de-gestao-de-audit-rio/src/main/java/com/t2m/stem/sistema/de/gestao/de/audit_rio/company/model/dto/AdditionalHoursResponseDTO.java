@@ -3,6 +3,7 @@ package com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.AdditionalHoursRequest;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.enums.AdditionalHoursRequestStatus;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record AdditionalHoursResponseDTO(
@@ -13,7 +14,8 @@ public record AdditionalHoursResponseDTO(
         String justification,
         AdditionalHoursRequestStatus status,
         boolean isApproved,
-        String requesterName
+        String requesterName,
+        LocalDateTime createdAt
 ) {
     public static AdditionalHoursResponseDTO from( AdditionalHoursRequest request, String nameOfUser) {
         return new AdditionalHoursResponseDTO(
@@ -24,7 +26,8 @@ public record AdditionalHoursResponseDTO(
                 request.getJustification(),
                 request.getStatus(),
                 request.isApproved(),
-                nameOfUser
+                nameOfUser,
+                request.getCreatedAt()
         );
     }
 }
