@@ -1,14 +1,13 @@
-import type { NextConfig } from 'next';
-
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-    async rewrites() {
-        return [
-            {
-                source: '/:path*',
-                destination: 'http://localhost:8080/:path*',
-            },
-        ];
-    },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'encrypted-tbn0.gstatic.com',
+      },
+    ],
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

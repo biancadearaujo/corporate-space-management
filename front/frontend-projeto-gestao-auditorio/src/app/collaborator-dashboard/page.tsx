@@ -421,7 +421,13 @@ function CollaboratorDashboard() {
                 <div className="hidden md:flex flex-1 max-w-2xl mx-8">
                     <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
                         <Search size={20} className="text-slate-500 mr-3" />
-                        <input type="text" placeholder="Buscar reservas ou espaços..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar reservas ou espaços..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                        />
                     </div>
                 </div>
 

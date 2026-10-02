@@ -31,7 +31,7 @@ interface VenueResponseDTO {
     id: string; 
     name: string;
     description: string;
-    imageUrl?: string;
+    image?: string;
     capacity?: number;
     features?: string[];
 }
@@ -241,54 +241,58 @@ function OurSpacesPage() {
                         ) : (
                             filteredSpaces.map((space, index) => (
                                 <Card
-                                    key={space.id|| index} 
-                                    className="group overflow-hidden border border-slate-100 bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+                                    key={space.id || index} 
+                                    className="group border border-slate-200 bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-3"
                                 >
-                                    <div className="aspect-w-4 aspect-h-3 relative h-56 w-full overflow-hidden bg-slate-100">
+                                    {/* 1. IMAGEM COM ESPAÇAMENTO UNIFORME */}
+                                    <div className="relative h-[220px] w-full overflow-hidden bg-slate-100 rounded-[16px] shrink-0">
                                         <Image
-                                            src={space.imageUrl || '/placeholder.svg?height=400&width=600'} 
+                                            src={space.image || '/placeholder.png'} 
                                             alt={space.name}
                                             fill
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                             className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                         />
-                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full text-slate-700 shadow-sm">
-                                            Pronto para uso
+                                        
+                                        {/* Gradiente escuro subtil na base da imagem */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                        
+                                        {/* Etiqueta "Disponível Imediatamente" com efeito Glass */}
+                                        <div className="absolute top-3 left-3 bg-white/70 backdrop-blur-md text-[11px] font-semibold tracking-wide px-3 py-1.5 rounded-full text-slate-800 shadow-sm flex items-center gap-2 border border-white/50">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                                            Disponível Imediatamente
                                         </div>
                                     </div>
                                     
-                                    <CardHeader className="px-6 pt-6 pb-2">
-                                        <CardTitle className="text-xl font-bold text-slate-800">
+                                    {/* 2. CONTEÚDO ALINHADO COM A IMAGEM */}
+                                    {/* px-1 garante que o texto fique na mesma linha vertical da imagem */}
+                                    <CardContent className="px-1 pt-4 pb-0 flex-1 flex flex-col">
+                                        <h3 className="text-[22px] font-bold text-[#001738] mb-1.5 group-hover:text-[#003399] transition-colors">
                                             {space.name}
-                                        </CardTitle>
-                                    </CardHeader>
-                                    
-                                    <CardContent className="px-6 flex-1">
-                                        <p className="text-sm text-slate-500 leading-relaxed mb-5 line-clamp-3">
-                                            {space.description || "Espaço ideal para reuniões, atendimentos ou foco total. Infraestrutura completa inclusa."}
+                                        </h3>
+                                        <p className="text-[13px] text-slate-600 leading-relaxed mb-4 line-clamp-2">
+                                            {space.description || "Espaço ideal para eventos corporativos, palestras e conferências com infraestrutura de ponta inclusa."}
                                         </p>
                                         
-                                        <div className="flex flex-wrap gap-2">
+                                        {/* Etiqueta de Capacidade Máxima */}
+                                        <div className="flex flex-wrap gap-2 mt-auto mb-4">
                                             {space.capacity && (
-                                                <span className="inline-flex items-center text-xs font-medium bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-200">
-                                                    <Users size={12} className="mr-1.5 text-slate-400" />
-                                                    Até {space.capacity} pessoas
+                                                <span className="inline-flex items-center text-[12px] font-semibold bg-[#F0F4F8] text-[#001738] px-3 py-1.5 rounded-full border border-slate-100">
+                                                    <Users size={14} className="mr-1.5 text-[#003399]" />
+                                                    Capacidade Máxima: {space.capacity} Pessoas
                                                 </span>
                                             )}
-                                            {space.features?.slice(0, 2).map((feature, j) => (
-                                                <span key={j} className="inline-flex items-center text-xs font-medium bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md border border-slate-200">
-                                                    {feature}
-                                                </span>
-                                            ))}
                                         </div>
                                     </CardContent>
                                     
-                                    <CardFooter className="px-6 pb-6 pt-4">
-                                        <Button className="w-full rounded-xl bg-slate-50 hover:bg-[#003399] text-[#003399] hover:text-white border border-slate-200 transition-colors font-semibold py-6 shadow-none" asChild>
+                                    {/* 3. BOTÃO SÓLIDO AZUL */}
+                                    <div className="px-1 pb-1 pt-0 mt-auto">
+                                        <Button className="w-full rounded-[14px] bg-[#003399] hover:bg-[#002266] text-white transition-colors font-medium py-6 shadow-md text-[15px]" asChild>
                                             <Link href={`/calendar?venue=${space.id}`}>
-                                                Ver disponibilidade
+                                                Saber Mais
                                             </Link>
                                         </Button>
-                                    </CardFooter>
+                                    </div>
                                 </Card>
                             ))
                         )}
