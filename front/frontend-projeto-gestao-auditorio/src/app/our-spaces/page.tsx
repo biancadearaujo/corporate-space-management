@@ -42,13 +42,16 @@ function OurSpacesPage() {
 
     const [spaces, setSpaces] = useState<VenueResponseDTO[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchVenues = async () => {
+            setIsLoading(true);
             try {
-                const response = await fetch('http://localhost:8080/venue', {
+                const response = await fetch(`http://localhost:8080/venue?page=${currentPage}&size=6`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -57,7 +60,13 @@ function OurSpacesPage() {
                 
                 if (response.ok) {
                     const data = await response.json();
-                    setSpaces(data.content || []);
+                    
+                    const sortedSpaces = (data.content || []).sort((a: any, b: any) => {
+                        return (a.capacity || 0) - (b.capacity || 0);
+                    });
+                    
+                    setSpaces(sortedSpaces);
+                    setTotalPages(data.totalPages || 1); 
                 }
             } catch (error) {
                 console.error("Erro na requisição de espaços:", error);
@@ -67,7 +76,7 @@ function OurSpacesPage() {
         };
 
         fetchVenues();
-    }, [token]);
+    }, [token, currentPage]);
 
     const handleLogout = () => {
         if (logout) logout();
@@ -76,79 +85,54 @@ function OurSpacesPage() {
     };
 
     const filteredSpaces = spaces.filter(space => 
-        space.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        space.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (space.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (space.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
             
-            {/* --- TOP NAVBAR (ESTILO ARCHDAILY) --- */}
+            {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
-                
-                {/* Esquerda: Menu e Logo */}
                 <div className="flex items-center gap-4 md:gap-6">
-                    <button 
-                        className="text-slate-600 hover:text-[#003399] transition-colors"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    >
+                    {/* O 'xl:hidden' faz com que o hambúrguer desapareça em telas grandes, igual ao Dashboard */}
+                    <button className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                         <Menu size={28} strokeWidth={1.5} />
                     </button>
-                    <div 
-                        className="flex items-center gap-2 cursor-pointer" 
-                        onClick={() => router.push('/collaborator-dashboard')}
-                    >
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/collaborator-dashboard')}>
                         <div className="flex flex-col items-center leading-none text-[#003399]">
-                            {/* Ícone geométrico simulando a logo da imagem */}
-                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
-                                <path d="M4 14h8v12"/>
-                                <path d="M12 2v12l8-4"/>
-                            </svg>
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
-                            brisa
-                        </span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
                     </div>
                 </div>
 
-                {/* Centro: Barra de Busca */}
                 <div className="hidden md:flex flex-1 max-w-2xl mx-8">
                     <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
                         <Search size={20} className="text-slate-500 mr-3" />
                         <input 
                             type="text" 
-                            placeholder="Buscar no Brisa" 
-                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar no Brisa..." 
+                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
                         />
                     </div>
                 </div>
 
-                {/* Direita: Links e Botões de Ação */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="/collaborator-dashboard" className="hover:text-[#003399] transition-colors">Dashboard</Link>
                         <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
-                        <Link href="#" className="text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="/our-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
                     
-                    {/* Divisor Vertical */}
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
                     
-                    <div className="flex items-center gap-4">
-                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
-                            {user?.name?.split(' ')[0] || 'Usuário'}
-                        </span>
-                        {/* Botão com o azul escuro característico */}
-                        <button 
-                            onClick={handleLogout} 
-                            className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors"
-                        >
-                            Sair
-                        </button>
+                    <div className="flex items-center gap-5">
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">{user?.name?.split(' ')[0] || 'Usuário'}</span>
+                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">Sair</button>
                     </div>
                 </div>
             </header>
@@ -297,6 +281,30 @@ function OurSpacesPage() {
                             ))
                         )}
                     </div>
+                    {/* Controlos de Paginação */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="w-full flex justify-center items-center gap-4 mt-12 pb-8">
+                            <Button 
+                                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                                disabled={currentPage === 0}
+                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md"
+                            >
+                                Anterior
+                            </Button>
+                            
+                            <span className="text-[15px] font text-[#001738] bg-[#F0F4F8] px-5 py-2.5 rounded-[14px] border border-slate-200 shadow-sm">
+                                Página {currentPage + 1} de {totalPages}
+                            </span>
+                            
+                            <Button 
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                                disabled={currentPage === totalPages - 1}
+                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md"
+                            >
+                                Próxima
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>
