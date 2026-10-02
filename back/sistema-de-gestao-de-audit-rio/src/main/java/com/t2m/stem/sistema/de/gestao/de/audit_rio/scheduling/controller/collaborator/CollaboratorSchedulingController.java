@@ -1,5 +1,7 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.controller.collaborator;
 
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.MonthlyUsageDTO;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.QuotaUsageDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.model.dto.*;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.model.enums.SchedulingRequestStatus;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.service.collaborator.CollaboratorSchedulingService;
@@ -54,6 +56,11 @@ public class CollaboratorSchedulingController {
             @PathVariable SchedulingRequestStatus status) {
         var scheduling = collaboratorSchedulingService.getSchedulingByStatus(status);
         return ResponseEntity.ok(scheduling);
+    }
+
+    @GetMapping("/quota")
+    public ResponseEntity<QuotaUsageDTO> getCurrentMonthQuota() {
+        return ResponseEntity.ok(collaboratorSchedulingService.getCurrentMonthQuota());
     }
 
     @PreAuthorize("hasRole('COLLABORATOR')")

@@ -1,6 +1,11 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.service.collaborator;
 
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.Company;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.CompanyHoursQuota;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.MonthlyUsageDTO;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.QuotaUsageDTO;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.CompanyHoursQuotaRepository;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.MonthlyUsageCompanyHoursRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.service.CompanyHoursQuotaService;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.service.CompanyService;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.service.MonthlyUsageCompanyHoursService;
@@ -28,6 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +52,8 @@ public class CollaboratorSchedulingService {
     private MonthlyUsageCompanyHoursService monthlyUsageCompanyHoursService;
     private CompanyService companyService;
     private SchedulingRejectedRequestRepository schedulingRejectedRequestRepository;
+    private CompanyHoursQuotaRepository companyHoursQuotaRepository;
+    private MonthlyUsageCompanyHoursRepository monthlyUsageRepository;
 
     public Page<SchedulingResponseDTO> getAllScheduling(Pageable pageable) {
         User currentUser = userValidator.getAuthenticatedUser();
@@ -110,6 +118,22 @@ public class CollaboratorSchedulingService {
         return schedulingRegisterRequests.stream()
                 .map(SchedulingRegisterResponseDTO::from)
                 .toList();
+    }
+
+    public QuotaUsageDTO getCurrentMonthQuota() {
+        Company company = userValidator.getAuthenticatedUser().getCompany();
+
+        CompanyHoursQuota quota = companyHoursQuotaRepository.findByCompanyId(company.getCompanyId())
+                .orElseThrow(() -> new NotFoundException("Hours quota not found for this company"));
+
+        YearMonth currentMonth = YearMonth.now();
+
+        Double monthlyUsedTotal = monthlyUsageRepository.getTotalUsedHoursInMonth(company.getCompanyId(), currentMonth);
+        double used = monthlyUsedTotal != null ? monthlyUsedTotal : 0.0;
+
+        double total = quota.getMonthlyLimitHours() + quota.getAdditionalHoursApproved();
+
+        return new QuotaUsageDTO(used, total);
     }
 
     @Transactional
