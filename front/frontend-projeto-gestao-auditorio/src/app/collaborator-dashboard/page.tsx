@@ -52,6 +52,7 @@ interface AdditionalHoursResponseDTO {
     justification: string;
     status: string;
     comments?: string;
+    createdAt?: string;
 }
 
 interface UnifiedSchedulingDTO {
@@ -389,6 +390,16 @@ function CollaboratorDashboard() {
                    item.name?.toLowerCase().includes(searchLower) || 
                    formatReservationStatus(item.status).toLowerCase().includes(searchLower);
         });
+    
+    const currentMonthHoursRequests = myHoursRequests.filter((req) => {
+        if (!req.createdAt) return true; 
+        
+        const reqDate = new Date(req.createdAt);
+        const today = new Date();
+        
+        return reqDate.getMonth() === today.getMonth() && 
+               reqDate.getFullYear() === today.getFullYear();
+    });
 
     return (
         <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
@@ -564,20 +575,36 @@ function CollaboratorDashboard() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100">
-                             <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-slate-800">Status de Solicitações</h3></div>
-                             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                                {isLoadingHours ? <p className="text-slate-500">Buscando...</p> : myHoursRequests.length === 0 ? <p className="text-slate-400 text-sm">Nenhuma solicitação no histórico.</p> :
-                                myHoursRequests.map(req => (
-                                    <div key={req.additionalHoursRequestId} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:shadow-sm transition-shadow">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-2"><span className="font-bold text-[#003399] text-lg">{req.requestedHours}h</span><span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Solicitadas</span></div>
-                                            <p className="text-sm text-slate-500 truncate max-w-[250px] md:max-w-xs mt-1" title={req.justification}>{req.justification}</p>
+                            {/* Título com mb-6 para empurrar a lista para baixo */}
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-800">Status de Solicitações</h3>
+                            </div>
+                            
+                            {/* Container com o mesmo espaçamento (space-y-4 max-h-[350px]) de Próximas Reservas */}
+                            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2">
+                                {isLoadingHours ? (
+                                    <p className="text-slate-500 pt-2">Buscando...</p>
+                                ) : currentMonthHoursRequests.length === 0 ? (
+                                    <p className="text-slate-400 text-sm pt-2">Nenhuma solicitação feita este mês.</p>
+                                ) : (
+                                    currentMonthHoursRequests.map(req => (
+                                        <div key={req.additionalHoursRequestId} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:shadow-sm transition-shadow">
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-[#003399] text-lg">{req.requestedHours}h</span>
+                                                    <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Solicitadas</span>
+                                                </div>
+                                                <p className="text-sm text-slate-500 truncate max-w-[250px] md:max-w-xs mt-1" title={req.justification}>{req.justification}</p>
+                                            </div>
+                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${getStatusStyles(req.status)}`}>
+                                                {getStatusIcon(req.status)}<span>{formatStatus(req.status)}</span>
+                                            </div>
                                         </div>
-                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${getStatusStyles(req.status)}`}>{getStatusIcon(req.status)}<span>{formatStatus(req.status)}</span></div>
-                                    </div>
-                                ))}
-                             </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
+                        
                         <div className="bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100">
                             <h3 className="text-xl font-bold text-slate-800 mb-6">Nova Solicitação</h3>
                             <form onSubmit={handleSubmitHoursRequest} className="space-y-4">

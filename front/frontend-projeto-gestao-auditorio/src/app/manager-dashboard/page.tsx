@@ -260,8 +260,10 @@ function ManagerDashboard() {
                     additionalHoursRequestId: selectedRequest.id,
                     requesterId: selectedRequest.requesterId, 
                     isApproved: selectedRequest.approved,
-                    comments: reviewComment,
-                    requestedHours: 0, justification: "", status: "PENDING" 
+                    comments: reviewComment || (selectedRequest.approved ? 'Aprovado pelo gestor' : 'Recusado pelo gestor'),
+                    requestedHours: 0, 
+                    justification: "", 
+                    status: null
                 });
             } else if (selectedRequest.type === 'SCHEDULING') {
                 if (selectedRequest.approved) {

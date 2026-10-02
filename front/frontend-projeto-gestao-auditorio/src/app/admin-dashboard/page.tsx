@@ -143,14 +143,41 @@ function AdminDashboard() {
     };
 
     const handleReviewRequest = async () => {
-        if (!activeReview) return;
-        // Lógica original de envio para API...
-        console.log(`Enviando: ID ${activeReview.requestId}, Status ${activeReview.status}, Comentário: ${reviewComment}`);
+        if (!activeReview || !token) return;
         
-        // Simulação de sucesso visual
-        setPendingRequests(prev => prev.filter(req => req.additionalHoursRequestId !== activeReview.requestId));
-        setActiveReview(null);
-        setReviewComment('');
+        try {
+            const isApproved = activeReview.status === 'APPROVED';
+            
+            // Monta o ReviewRequestDTO exigido pelo AdminService
+            const payload = {
+                additionalHoursRequestId: activeReview.requestId,
+                isApproved: isApproved,
+                comments: reviewComment || (isApproved ? 'Aprovado pelo admin' : 'Recusado pelo admin'),
+                status: activeReview.status 
+            };
+
+            const response = await fetch('/admin/additional-hours-request/review', {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok || response.status === 204) {
+                // Remove da lista em caso de sucesso
+                setPendingRequests(prev => prev.filter(req => req.additionalHoursRequestId !== activeReview.requestId));
+                setActiveReview(null);
+                setReviewComment('');
+            } else {
+                const errorData = await response.json().catch(() => null);
+                alert(`Erro: ${errorData?.message || 'Falha ao processar a solicitação.'}`);
+            }
+        } catch (error) {
+            console.error("Erro na revisão:", error);
+            alert("Erro de conexão ao enviar a revisão.");
+        }
     };
 
     return (
