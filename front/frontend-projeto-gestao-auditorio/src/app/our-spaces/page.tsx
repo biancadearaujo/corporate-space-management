@@ -103,7 +103,7 @@ function OurSpacesPage() {
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">Órbita</span>
                     </div>
                 </div>
 
@@ -112,7 +112,7 @@ function OurSpacesPage() {
                         <Search size={20} className="text-slate-500 mr-3" />
                         <input 
                             type="text" 
-                            placeholder="Buscar no Brisa..." 
+                            placeholder="Buscar no Órbita..." 
                             className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" 
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
@@ -144,7 +144,7 @@ function OurSpacesPage() {
                         <Search size={20} className="text-slate-500 mr-3" />
                         <input 
                             type="text" 
-                            placeholder="Buscar no Brisa..." 
+                            placeholder="Buscar no Órbita..." 
                             className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

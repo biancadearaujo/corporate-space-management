@@ -77,10 +77,10 @@ const empresasIniciais: Empresa[] = [
     },
     {
         id: 3,
-        nome: 'Brisa',
+        nome: 'Órbita',
         cnpj: '22.222.222/0001-22',
         telefone: '(21) 92222-2222',
-        logo: '/img/logobrisa.png',
+        logo: '/img/logob.png',
         horasUtilizadas: 11,
         limiteHoras: 15,
         cor: 'bg-blue-800',

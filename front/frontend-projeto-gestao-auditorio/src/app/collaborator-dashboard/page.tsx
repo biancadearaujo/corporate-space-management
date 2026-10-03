@@ -166,7 +166,6 @@ function CollaboratorDashboard() {
             });
             if (response.ok) { 
                 const data = await response.json(); 
-                // Mapeando "usedHours" para o uso e "month" para o total da cota mensal
                 setQuota({ 
                     used: data?.usedHours || 0, 
                     total: data?.month || 0 
@@ -442,7 +441,7 @@ function CollaboratorDashboard() {
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">Órbita</span>
                     </div>
                 </div>
 

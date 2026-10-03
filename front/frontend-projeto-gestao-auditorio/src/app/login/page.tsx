@@ -26,7 +26,7 @@ export default function LoginPage() {
            <div className="absolute -z-10 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-40"></div>
            
            <h1 className="text-5xl font-bold tracking-wide text-white drop-shadow-lg">
-             Space Master
+             ÓRBITA
            </h1>
            <p className="text-blue-100 text-lg font-light tracking-wider opacity-80">
              GESTÃO DE AUDITÓRIOS
