@@ -184,14 +184,18 @@ function ProfilePage() {
                     });
                 }
                 
-                // ... (o resto da função continua igual)
+                // ... (código anterior do profileRes continua igual)
+
                 if (schedulingRes.ok) {
                     const data = await schedulingRes.json();
-                    setStats(prev => ({ ...prev, reservationsCount: (data.content || []).length }));
+                    // Adicionado o filtro para contar apenas reservas com status 'APPROVED'
+                    const approvedReservations = (data.content || []).filter((r: any) => r.status === 'APPROVED');
+                    setStats(prev => ({ ...prev, reservationsCount: approvedReservations.length }));
                 }
 
                 if (hoursRes.ok) {
                     const data = await hoursRes.json();
+                    // Este já estava correto! Soma apenas as horas onde o status é 'APPROVED'
                     const totalHours = (data.content || [])
                         .filter((r: any) => r.status === 'APPROVED')
                         .reduce((acc: number, curr: any) => acc + (Number(curr.requestedHours) || 0), 0);
