@@ -122,6 +122,55 @@ function CollaboratorDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const [dbUserName, setDbUserName] = useState<string>('');
+
+    // --- FETCHES DE DADOS (Com headers explícitos garantidos) ---
+    const fetchUserProfile = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch('http://localhost:8080/collaborator/user/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.name) setDbUserName(data.name);
+            }
+        } catch (error) { console.error("Erro ao buscar perfil do usuário", error); }
+    };
+
+    const fetchHoursRequests = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch('http://localhost:8080/collaborator/hours-requests', { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            if (response.ok) { const data = await response.json(); setMyHoursRequests(data.content || []); }
+        } catch (error) { } finally { setIsLoadingHours(false); }
+    };
+
+    const fetchUnifiedSchedulings = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch('http://localhost:8080/collaborator/unified-scheduling', { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            if (response.ok) { const data = await response.json(); setUnifiedSchedulings(data.content || []); }
+        } catch (error) { } finally { setIsLoadingReservations(false); }
+    };
+
+    const fetchQuota = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch('http://localhost:8080/collaborator/quota', { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            if (response.ok) { 
+                const data = await response.json(); 
+                setQuota({ used: data?.usedHours || 0, total: data?.totalHours || 0 }); 
+            }
+        } catch (error) { console.error("Erro ao buscar cota:", error); }
+    };
+
     // --- LÓGICA DE NOTIFICAÇÕES ---
     const fetchNotifications = async () => {
         if (!token) return;
@@ -138,32 +187,18 @@ function CollaboratorDashboard() {
         } catch (error) { console.error(error); }
     };
 
-    const fetchQuota = async () => {
-        if (!token) return;
-        try {
-            const response = await fetch('/collaborator/quota', { 
-                headers: { 'Authorization': `Bearer ${token}` } 
-            });
-            if (response.ok) { 
-                const data = await response.json(); 
-                setQuota({ 
-                    used: data?.usedHours || 0, 
-                    total: data?.totalHours || 0 
-                }); 
-            }
-        } catch (error) { 
-            console.error("Erro ao buscar cota:", error); 
-        }
-    };
-
     useEffect(() => {
+        if (!token) return;
+        
+        fetchUserProfile();
         fetchHoursRequests();
         fetchUnifiedSchedulings();
-        fetchQuota(); // <-- Adicionado aqui
+        fetchQuota(); 
+        
         const interval = setInterval(() => { 
             fetchHoursRequests(); 
             fetchUnifiedSchedulings(); 
-            fetchQuota(); // <-- Adicionado aqui
+            fetchQuota(); 
         }, 60000); 
         return () => clearInterval(interval);
     }, [token]);
@@ -245,29 +280,14 @@ function CollaboratorDashboard() {
         return diffInMs > (48 * 60 * 60 * 1000);
     };
 
-    // --- FETCHES DE DADOS ---
-    const fetchHoursRequests = async () => {
-        if (!token) return;
-        try {
-            const response = await fetch('/collaborator/hours-requests', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) { const data = await response.json(); setMyHoursRequests(data.content || []); }
-        } catch (error) { } finally { setIsLoadingHours(false); }
-    };
-
-    const fetchUnifiedSchedulings = async () => {
-        if (!token) return;
-        try {
-            const response = await fetch('/collaborator/unified-scheduling', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) { const data = await response.json(); setUnifiedSchedulings(data.content || []); }
-        } catch (error) { } finally { setIsLoadingReservations(false); }
-    };
-
+    // --- FUNÇÕES DE AÇÃO ---
+    
     const handleSubmitHoursRequest = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newRequestHours || !newRequestJustification) return;
         setIsSubmittingHours(true);
         try {
-            const response = await fetch('/collaborator/hours-requests', {
+            const response = await fetch('http://localhost:8080/collaborator/hours-requests', { // URL Corrigida aqui
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ requestedHours: parseFloat(newRequestHours), justification: newRequestJustification })
@@ -297,7 +317,7 @@ function CollaboratorDashboard() {
         const endpoint = isPending ? `/collaborator/scheduling-request/${id}` : `/collaborator/scheduling/${id}`;
         
         try {
-            const response = await fetch(endpoint, { 
+            const response = await fetch(`http://localhost:8080${endpoint}`, { // URL Corrigida aqui
                 method: 'DELETE', 
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } 
             });
@@ -330,7 +350,7 @@ function CollaboratorDashboard() {
         const startAtISO = `${editDate}T${editStartTime}:00`;
         const endAtISO = `${editDate}T${editEndTime}:00`;
         try {
-            const response = await fetch(`/collaborator/scheduling/${editingId}`, {
+            const response = await fetch(`http://localhost:8080/collaborator/scheduling/${editingId}`, { // URL Corrigida aqui
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: editName, startAt: startAtISO, endAt: endAtISO })
@@ -418,22 +438,9 @@ function CollaboratorDashboard() {
                     </div>
                 </div>
 
-                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar reservas ou espaços..." 
-                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" 
-                            value={searchTerm} 
-                            onChange={(e) => setSearchTerm(e.target.value)} 
-                        />
-                    </div>
-                </div>
-
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href="/collaborator-dashboard" className="text-[#003399] font-semibold transition-colors">Dashboard</Link>
                         <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
@@ -477,7 +484,9 @@ function CollaboratorDashboard() {
                                 </>
                             )}
                         </div>
-                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">{user?.name?.split(' ')[0] || 'Usuário'}</span>
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {dbUserName ? dbUserName.split(' ')[0] : (user?.name?.split(' ')[0] || 'Usuário')}
+                        </span>
                         <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">Sair</button>
                     </div>
                 </div>
@@ -486,12 +495,8 @@ function CollaboratorDashboard() {
             {/* --- MENU MOBILE --- */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
-                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input type="text" placeholder="Buscar reservas..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    </div>
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="text-[#003399]">Dashboard</Link>
+                        <Link href="/collaborator-dashboard" className="text-[#003399] font-semibold">Dashboard</Link>
                         <Link href="/calendar" className="hover:text-[#003399]">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
@@ -503,7 +508,7 @@ function CollaboratorDashboard() {
             <main className="flex-1 overflow-y-auto">
                 <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
                     <div>
-                        <h2 className="text-2xl font-bold text-slate-800">Olá, {user?.name?.split(' ')[0] || 'Colaborador'}</h2>
+                        <h2 className="text-2xl font-bold text-slate-800">Olá, {dbUserName ? dbUserName.split(' ')[0] : (user?.name?.split(' ')[0] || 'Colaborador')}</h2>
                         <p className="text-slate-500 mt-1 text-sm">Acompanhe suas reservas e solicitações de horas.</p>
                     </div>
 
