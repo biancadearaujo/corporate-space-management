@@ -4,19 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-    LayoutGrid,
-    Users,
-    Settings,
-    Building2,
-    LogOut,
-    Bell,
-    Search,
-    Check,
-    X,
-    Menu,
-    Box,
-    Clock,
-    FileText
+    Building2, Users, Box, LogOut, Bell, Search, Menu, 
+    Clock, FileText, Check, X, CheckCircle2, XCircle, Info, AlertTriangle
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
@@ -34,81 +23,81 @@ interface AdditionalHoursResponseDTO {
 }
 
 // --- Componentes Visuais Auxiliares ---
-
-// 1. Item do Menu Lateral (Estilo da imagem: ícone + texto, fundo escuro)
-const SidebarItem = ({ icon: Icon, label, active, onClick, collapsed }: any) => (
-    <div
-        onClick={onClick}
-        className={`flex items-center gap-3 p-3 mb-2 rounded-lg cursor-pointer transition-all duration-200 
-        ${active 
-            ? 'bg-white/10 text-white border-l-4 border-teal-400' 
-            : 'text-indigo-200 hover:bg-white/5 hover:text-white'
-        }`}
-    >
-        <Icon size={20} />
-        {!collapsed && <span className="text-sm font-medium">{label}</span>}
+const StatCard = ({ title, value, subtext, active }: { title: string, value: string | number, subtext?: string, active?: boolean }) => (
+    <div className={`p-6 rounded-[24px] shadow-sm border transition-all duration-300 ${
+        active ? 'bg-[#003399] text-white border-[#003399]' : 'bg-white text-slate-700 border-slate-100 hover:shadow-md'
+    }`}>
+        <p className={`text-sm font-medium mb-2 ${active ? 'text-blue-100' : 'text-slate-500'}`}>{title}</p>
+        <h3 className="text-3xl font-bold">{value}</h3>
+        {subtext && <p className={`text-xs mt-2 ${active ? 'text-blue-200/80' : 'text-slate-400'}`}>{subtext}</p>}
     </div>
 );
 
-// 2. Card de Estatística (Topo - Fundo branco, número grande)
-const StatCard = ({ title, value, subtext, icon: Icon, iconColor }: any) => (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-between h-32 relative overflow-hidden group hover:shadow-md transition-shadow">
-        <div className="flex justify-between items-start z-10">
-            <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">{title}</p>
-                <h3 className="text-3xl font-bold text-gray-800 dark:text-white mt-2">{value}</h3>
-            </div>
-            <div className={`p-2 rounded-lg ${iconColor} bg-opacity-10`}>
-                <Icon size={24} className={iconColor.replace('bg-', 'text-')} />
-            </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-auto z-10">{subtext}</p>
-        {/* Decoração de fundo */}
-        <Icon size={80} className="absolute -bottom-4 -right-4 opacity-5 text-gray-400 group-hover:scale-110 transition-transform" />
-    </div>
-);
-
-// 3. Mock do Gráfico de Barras (Para simular o visual "Monthly Space Utilization")
 const MockBarChart = () => {
     const bars = [40, 70, 30, 85, 50, 65, 45, 90, 60, 55, 80, 40];
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return (
-        <div className="flex items-end justify-between h-48 gap-2 mt-4 px-2">
+        <div className="flex items-end justify-between gap-2 px-2 min-h-[220px]">
             {bars.map((height, i) => (
-                <div key={i} className="w-full flex flex-col justify-end group cursor-pointer">
-                    <div 
-                        className="w-full bg-blue-100 dark:bg-blue-900 rounded-t-sm relative group-hover:bg-blue-200 transition-all" 
-                        style={{ height: `${height}%` }}
-                    >
-                        {/* Tooltip simples */}
-                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded">
-                            {height}%
+                <div key={i} className="w-full flex flex-col justify-end items-center group cursor-pointer h-full gap-3 mt-4">
+                    <div className="w-full bg-[#F0F2F5] rounded-t-xl relative h-48 flex items-end overflow-visible">
+                        <div 
+                            className="w-full bg-[#003399] rounded-t-xl transition-all duration-700 opacity-80 group-hover:opacity-100" 
+                            style={{ height: `${height}%` }}
+                        ></div>
+                        <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-slate-600">{height}h</span>
                         </div>
                     </div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{months[i]}</span>
                 </div>
             ))}
         </div>
     );
 };
 
+// --- Componente Principal ---
 function AdminDashboard() {
-    const { user, token, logout } = useAuth(); // Assumindo que existe logout no hook
+    const { user, token, logout } = useAuth(); 
     const router = useRouter();
     
-    // Estados
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [activeTab, setActiveTab] = useState('dashboard');
+    // Estados de Interface
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [dbUserName, setDbUserName] = useState<string>('');
+    const [activeTab, setActiveTab] = useState('hours'); // Aba para listagens no centro
+
+    // Estados de Dados
     const [pendingRequests, setPendingRequests] = useState<AdditionalHoursResponseDTO[]>([]);
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+    
+    // Estados de Ação
     const [reviewComment, setReviewComment] = useState('');
     const [activeReview, setActiveReview] = useState<{ requestId: string; status: 'APPROVED' | 'REJECTED' } | null>(null);
 
-    // Efeitos (Mantendo sua lógica de fetch)
+    // Alerta Personalizado
+    const [customAlert, setCustomAlert] = useState({ isOpen: false, title: '', message: '', type: 'success' as 'success' | 'error' | 'info' });
+    const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        setCustomAlert({ isOpen: true, title, message, type });
+    };
+
+    // Efeitos
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (!token) return;
+            try {
+                const response = await fetch('http://localhost:8080/admin/user/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (response.ok) { const data = await response.json(); if (data.name || data.username) setDbUserName(data.name || data.username); }
+            } catch (error) { console.error("Erro ao buscar perfil:", error); }
+        };
+        fetchUserProfile();
+    }, [token]);
+
     useEffect(() => {
         const fetchPendingRequests = async () => {
             if (!token) return;
             setIsLoadingRequests(true);
             try {
-                const response = await fetch('/admin/additional-hours-request/pending-admin-review-with-company', {
+                const response = await fetch('http://localhost:8080/admin/additional-hours-request/pending-admin-review-with-company', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error('Falha ao buscar');
@@ -116,12 +105,10 @@ function AdminDashboard() {
                 setPendingRequests(data);
             } catch (error) {
                 console.error(error);
-                // Mock de dados para visualização caso a API falhe ou esteja vazia durante teste
                 if (pendingRequests.length === 0) {
                     setPendingRequests([
                         { additionalHoursRequestId: '1', companyName: 'Tech Solutions', requestedHours: 5, justification: 'Projeto Extra', status: 'PENDING', companyId: '1', requesterId: '1' },
                         { additionalHoursRequestId: '2', companyName: 'Inova Soft', requestedHours: 12, justification: 'Hackathon', status: 'PENDING', companyId: '2', requesterId: '2' },
-                        { additionalHoursRequestId: '3', companyName: 'Alpha Code', requestedHours: 3, justification: 'Reunião Externa', status: 'PENDING', companyId: '3', requesterId: '3' },
                     ]);
                 }
             } finally {
@@ -131,7 +118,21 @@ function AdminDashboard() {
         fetchPendingRequests();
     }, [token]);
 
-    // Lógica de Review
+    // Handlers
+    const handleLogout = () => {
+        if (logout) logout();
+        else localStorage.removeItem('token');
+        router.replace('/'); 
+    };
+
+    const handleDashboardClick = () => {
+        const roles = user?.roles || []; 
+        if (roles.includes('ROLE_ADMIN')) router.push('/admin-dashboard');
+        else if (roles.includes('ROLE_MANAGER')) router.push('/manager-dashboard');
+        else if (roles.includes('ROLE_COLLABORATOR')) router.push('/collaborator-dashboard');
+        else router.push('/');
+    };
+
     const startReview = (requestId: string, status: 'APPROVED' | 'REJECTED') => {
         if (activeReview?.requestId === requestId && activeReview.status === status) {
             setActiveReview(null);
@@ -148,7 +149,6 @@ function AdminDashboard() {
         try {
             const isApproved = activeReview.status === 'APPROVED';
             
-            // Monta o ReviewRequestDTO exigido pelo AdminService
             const payload = {
                 additionalHoursRequestId: activeReview.requestId,
                 isApproved: isApproved,
@@ -156,238 +156,161 @@ function AdminDashboard() {
                 status: activeReview.status 
             };
 
-            const response = await fetch('/admin/additional-hours-request/review', {
+            const response = await fetch('http://localhost:8080/admin/additional-hours-request/review', {
                 method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (response.ok || response.status === 204) {
-                // Remove da lista em caso de sucesso
                 setPendingRequests(prev => prev.filter(req => req.additionalHoursRequestId !== activeReview.requestId));
                 setActiveReview(null);
                 setReviewComment('');
+                showAlert("Sucesso", `Solicitação ${isApproved ? 'aprovada' : 'rejeitada'} com sucesso!`, "success");
             } else {
                 const errorData = await response.json().catch(() => null);
-                alert(`Erro: ${errorData?.message || 'Falha ao processar a solicitação.'}`);
+                showAlert("Erro", errorData?.message || 'Falha ao processar a solicitação.', "error");
             }
         } catch (error) {
             console.error("Erro na revisão:", error);
-            alert("Erro de conexão ao enviar a revisão.");
+            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error");
         }
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 font-sans overflow-hidden">
+        <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
             
-            {/* 1. SIDEBAR (Azul Escuro - Esquerda) */}
-            <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-[#1A237E] text-white flex flex-col transition-all duration-300 shadow-xl z-20`}>
-                
-                {/* Logo Area */}
-                <div className="h-20 flex items-center justify-center border-b border-indigo-800">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-white text-[#1A237E] p-1.5 rounded-md font-bold text-xl">SM</div>
-                        {!sidebarCollapsed && <span className="font-bold text-lg tracking-wide">SpaceMaster</span>}
-                    </div>
-                </div>
-
-                {/* Navigation Links */}
-                <div className="flex-1 overflow-y-auto py-6 px-3">
-                    <p className={`text-xs text-indigo-400 font-semibold mb-4 uppercase px-3 ${sidebarCollapsed ? 'text-center' : ''}`}>
-                        {sidebarCollapsed ? 'Menu' : 'Administrador'}
-                    </p>
-                    
-                    <SidebarItem 
-                        icon={LayoutGrid} 
-                        label="Dashboard" 
-                        active={activeTab === 'dashboard'} 
-                        collapsed={sidebarCollapsed}
-                        onClick={() => setActiveTab('dashboard')}
-                    />
-                    <SidebarItem 
-                        icon={Building2} 
-                        label="Empresas" 
-                        collapsed={sidebarCollapsed}
-                        onClick={() => router.push('/registered-companies')}
-                    />
-                    <SidebarItem 
-                        icon={Users} 
-                        label="Gestores" 
-                        collapsed={sidebarCollapsed}
-                        onClick={() => router.push('/register-manager')}
-                    />
-                    <SidebarItem 
-                        icon={Box} 
-                        label="Espaços & Equip." 
-                        collapsed={sidebarCollapsed}
-                        onClick={() => router.push('/registered-spaces')}
-                    />
-                    <SidebarItem 
-                        icon={FileText} 
-                        label="Relatórios" 
-                        collapsed={sidebarCollapsed}
-                    />
-                </div>
-
-                {/* Footer Sidebar */}
-                <div className="p-4 border-t border-indigo-800">
-                    <SidebarItem 
-                        icon={LogOut} 
-                        label="Sair" 
-                        collapsed={sidebarCollapsed}
-                        onClick={() => router.push('/')}
-                    />
-                    <button 
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="w-full flex justify-center p-2 text-indigo-300 hover:text-white mt-2"
-                    >
-                        <Menu size={20} />
+            {/* --- TOP NAVBAR --- */}
+            <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
+                <div className="flex items-center gap-4 md:gap-6">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden">
+                        <Menu size={28} strokeWidth={1.5} />
                     </button>
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={handleDashboardClick}>
+                        <div className="flex flex-col items-center leading-none text-[#003399]">
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
+                        </div>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">Órbita</span>
+                    </div>
                 </div>
-            </aside>
 
-            {/* 2. ÁREA PRINCIPAL (Direita) */}
-            <main className="flex-1 flex flex-col overflow-hidden relative">
-                
-                {/* Top Header (Transparente/Branco) */}
-                <header className="h-20 bg-white dark:bg-gray-800 flex items-center justify-between px-8 shadow-sm z-10">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Visão Geral</h1>
-                        <p className="text-sm text-gray-500">Bem-vindo de volta, {user?.name || 'Administrador'}</p>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        {/* Search Bar Fake */}
-                        <div className="hidden md:flex items-center bg-gray-100 dark:bg-gray-700 rounded-full px-4 py-2">
-                            <Search size={18} className="text-gray-400" />
-                            <input type="text" placeholder="Buscar..." className="bg-transparent border-none focus:outline-none text-sm ml-2 w-48" />
-                        </div>
-
-                        <button className="p-2 relative text-gray-600 dark:text-gray-300 hover:bg-gray-100 rounded-full">
-                            <Bell size={20} />
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <div className="flex items-center gap-6">
+                    <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
+                        <Link href="/admin-dashboard" className="text-[#003399] font-semibold transition-colors">Painel Geral</Link>
+                        <Link href="/registered-companies" className="hover:text-[#003399] transition-colors">Empresas</Link>
+                        <Link href="/register-manager" className="hover:text-[#003399] transition-colors">Gestores</Link>
+                        <Link href="/registered-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
+                    </nav>
+                    <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
+                    <div className="flex items-center gap-5">
+                        <button className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
+                            <Bell size={18} />
+                            {pendingRequests.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>}
                         </button>
-                        
-                        <div className="h-10 w-10 bg-gradient-to-tr from-teal-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg cursor-pointer">
-                            {user?.name?.charAt(0) || 'A'}
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {dbUserName ? dbUserName.split(' ')[0] : (user?.name?.split(' ')[0] || 'Admin')}
+                        </span>
+                        <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">Sair</button>
+                    </div>
+                </div>
+            </header>
+
+            {/* --- MENU MOBILE --- */}
+            {isMobileMenuOpen && (
+                <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
+                    <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
+                        <Link href="/admin-dashboard" className="text-[#003399] font-semibold">Painel Geral</Link>
+                        <Link href="/registered-companies" className="hover:text-[#003399]">Empresas</Link>
+                        <Link href="/register-manager" className="hover:text-[#003399]">Gestores</Link>
+                        <Link href="/registered-spaces" className="hover:text-[#003399]">Espaços</Link>
+                        <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
+                    </nav>
+                </div>
+            )}
+
+            {/* --- MAIN CONTENT --- */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800">Painel Administrativo</h2>
+                            <p className="text-slate-500 mt-1 text-sm">Visão geral do sistema e aprovações pendentes.</p>
                         </div>
                     </div>
-                </header>
 
-                {/* Conteúdo com Scroll */}
-                <div className="flex-1 overflow-y-auto p-8">
-                    
-                    {/* 3. LINHA DE ESTATÍSTICAS (Cards Brancos) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <StatCard 
-                            title="Total Empresas" 
-                            value="125" 
-                            subtext="+4 novas este mês" 
-                            icon={Building2} 
-                            iconColor="text-blue-600" 
-                        />
-                        <StatCard 
-                            title="Reservas Ativas" 
-                            value="87" 
-                            subtext="12 finalizando hoje" 
-                            icon={Clock} 
-                            iconColor="text-indigo-600" 
-                        />
-                        <StatCard 
-                            title="Horas Consumidas" 
-                            value="1,230" 
-                            subtext="85% da cota mensal" 
-                            icon={Box} 
-                            iconColor="text-orange-500" 
-                        />
-                        <StatCard 
-                            title="Pendências" 
-                            value={pendingRequests.length} 
-                            subtext="Aguardando aprovação" 
-                            icon={Bell} 
-                            iconColor="text-red-500" 
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <StatCard title="Total de Empresas" value="12" active={true} />
+                        <StatCard title="Reservas Ativas" value="45" />
+                        <StatCard title="Horas Consumidas" value="1,230" subtext="No mês atual" />
+                        <StatCard title="Pendências" value={pendingRequests.length} subtext="Aguardando admin" />
                     </div>
 
-                    {/* 4. ÁREA CENTRAL: Gráfico + Lista de Solicitações */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        {/* Coluna Esquerda: Gráfico (Ocupa 2 espaços) */}
-                        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
+                        {/* GRÁFICO */}
+                        <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Utilização Mensal dos Espaços</h3>
-                                <div className="flex gap-2">
-                                    <span className="flex items-center text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-200 mr-1"></span> Disp.</span>
-                                    <span className="flex items-center text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-blue-600 mr-1"></span> Utilizado</span>
+                                <h3 className="text-xl font-bold text-slate-800">Utilização Mensal (Geral)</h3>
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <div className="w-3 h-3 rounded-full bg-[#003399]"></div> Total de Horas
                                 </div>
                             </div>
                             <MockBarChart />
-                            <div className="flex justify-between mt-2 text-xs text-gray-400 px-2">
-                                <span>Jan</span><span>Fev</span><span>Mar</span><span>Abr</span><span>Mai</span><span>Jun</span>
-                                <span>Jul</span><span>Ago</span><span>Set</span><span>Out</span><span>Nov</span><span>Dez</span>
-                            </div>
                         </div>
 
-                        {/* Coluna Direita: Solicitações Pendentes (Estilo Lista da Imagem) */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 flex flex-col">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Solicitações de Horas</h3>
-                                <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">{pendingRequests.length} Novas</span>
+                        {/* LISTA DE SOLICITAÇÕES */}
+                        <div className="bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-800">Solicitações de Horas</h3>
+                                {pendingRequests.length > 0 && <span className="bg-red-50 text-red-600 text-[11px] font-bold px-2 py-1 rounded-md">{pendingRequests.length} Novas</span>}
                             </div>
 
-                            <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[400px]">
-                                {pendingRequests.length === 0 ? (
-                                    <p className="text-center text-gray-400 py-8 text-sm">Tudo limpo! Nenhuma solicitação.</p>
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[350px]">
+                                {isLoadingRequests ? (
+                                    <p className="text-center text-slate-400 py-8 font-medium">Buscando...</p>
+                                ) : pendingRequests.length === 0 ? (
+                                    <p className="text-center text-slate-400 py-8 font-medium">Nenhuma solicitação pendente.</p>
                                 ) : (
                                     pendingRequests.map((request) => (
-                                        <div key={request.additionalHoursRequestId} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 transition-all hover:shadow-md border border-transparent hover:border-gray-200">
-                                            <div className="flex justify-between items-start mb-2">
+                                        <div key={request.additionalHoursRequestId} className="bg-white rounded-2xl p-5 border border-slate-100 hover:shadow-md transition-all shadow-sm">
+                                            <div className="flex justify-between items-start mb-3">
                                                 <div>
-                                                    <h4 className="font-bold text-sm text-gray-800 dark:text-white">{request.companyName}</h4>
-                                                    <p className="text-xs text-gray-500">Solicitado: <span className="font-semibold text-indigo-600">{request.requestedHours}h</span></p>
+                                                    <h4 className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{request.companyName}</h4>
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <span className="text-[10px] font-bold text-[#003399] bg-blue-50 px-2 py-0.5 rounded-md uppercase tracking-wider">{request.requestedHours}h</span>
+                                                    </div>
                                                 </div>
-                                                <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Hoje</span>
                                             </div>
                                             
-                                            <p className="text-xs text-gray-500 italic mb-3 line-clamp-2">"{request.justification}"</p>
+                                            <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed" title={request.justification}>"{request.justification}"</p>
 
-                                            {/* Área de Ação */}
-                                            <div className="flex items-center gap-2 mt-2">
+                                            <div className="flex flex-col gap-2">
                                                 {activeReview?.requestId === request.additionalHoursRequestId ? (
-                                                    <div className="flex flex-col w-full gap-2 animate-in fade-in slide-in-from-top-2">
+                                                    <div className="flex flex-col gap-2 bg-[#F0F2F5] p-2 rounded-xl">
                                                         <textarea
                                                             value={reviewComment}
                                                             onChange={(e) => setReviewComment(e.target.value)}
-                                                            placeholder="Adicionar comentário..."
-                                                            className="w-full text-xs p-2 rounded border focus:ring-2 ring-indigo-200 outline-none"
+                                                            placeholder={activeReview.status === 'APPROVED' ? "Comentário (opcional)..." : "Motivo da rejeição..."}
+                                                            className="w-full text-xs p-2 rounded-lg border-transparent focus:ring-2 focus:ring-[#003399]/20 outline-none resize-none bg-white"
                                                             rows={2}
+                                                            required={activeReview.status === 'REJECTED'}
                                                         />
                                                         <div className="flex justify-end gap-2">
-                                                            <button onClick={() => setActiveReview(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
-                                                            <button 
-                                                                onClick={handleReviewRequest}
-                                                                className={`text-xs px-3 py-1 rounded text-white ${activeReview.status === 'APPROVED' ? 'bg-green-500' : 'bg-red-500'}`}
-                                                            >
+                                                            <button onClick={() => setActiveReview(null)} className="text-xs font-bold text-slate-500 hover:text-slate-700 px-2">Cancelar</button>
+                                                            <button onClick={handleReviewRequest} className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white shadow-sm ${activeReview.status === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
                                                                 Confirmar {activeReview.status === 'APPROVED' ? 'Aprovação' : 'Rejeição'}
                                                             </button>
                                                         </div>
                                                     </div>
                                                 ) : (
                                                     <div className="flex gap-2 w-full">
-                                                        <button 
-                                                            onClick={() => startReview(request.additionalHoursRequestId, 'APPROVED')}
-                                                            className="flex-1 flex items-center justify-center gap-1 bg-green-50 hover:bg-green-100 text-green-600 text-xs py-1.5 rounded transition-colors font-medium"
-                                                        >
-                                                            <Check size={14} /> Aprovar
+                                                        <button onClick={() => startReview(request.additionalHoursRequestId, 'REJECTED')} className="flex-1 flex justify-center items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-[11px] py-2 rounded-lg transition-colors font-bold uppercase tracking-wider">
+                                                            <X size={14} /> Recusar
                                                         </button>
-                                                        <button 
-                                                            onClick={() => startReview(request.additionalHoursRequestId, 'REJECTED')}
-                                                            className="flex-1 flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs py-1.5 rounded transition-colors font-medium"
-                                                        >
-                                                            <X size={14} /> Rejeitar
+                                                        <button onClick={() => startReview(request.additionalHoursRequestId, 'APPROVED')} className="flex-1 flex justify-center items-center gap-1.5 bg-[#003399] hover:bg-[#002266] text-white text-[11px] py-2 rounded-lg transition-colors font-bold uppercase tracking-wider shadow-sm">
+                                                            <Check size={14} /> Aprovar
                                                         </button>
                                                     </div>
                                                 )}
@@ -396,19 +319,18 @@ function AdminDashboard() {
                                     ))
                                 )}
                             </div>
-                            <button className="w-full text-center text-xs text-indigo-600 font-semibold mt-4 hover:underline">Ver todo o histórico</button>
                         </div>
                     </div>
 
                     {/* 5. TABELA INFERIOR (Empresas) */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-gray-800 dark:text-white">Status das Cotas por Empresa</h3>
-                            <button className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-4 py-2 rounded-lg transition-colors">Exportar Dados</button>
+                    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+                            <h3 className="text-xl font-bold text-slate-800">Status das Cotas por Empresa</h3>
+                            <button className="bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold px-4 py-2 rounded-lg transition-colors border border-slate-200 shadow-sm uppercase tracking-wider">Exportar</button>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
-                                <thead className="bg-gray-50 dark:bg-gray-700/50 text-xs uppercase font-semibold text-gray-500">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-[#F0F2F5]/50 text-[11px] uppercase tracking-wider font-bold text-slate-500">
                                     <tr>
                                         <th className="px-6 py-4">Nome da Empresa</th>
                                         <th className="px-6 py-4">Status da Cota</th>
@@ -416,19 +338,19 @@ function AdminDashboard() {
                                         <th className="px-6 py-4 text-right">Ação</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tbody className="divide-y divide-slate-100 bg-white">
                                     {[1, 2, 3].map((_, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                            <td className="px-6 py-4 font-medium flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0"></div>
-                                                Empresa Registrada {i + 1}
+                                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#003399] shrink-0"><Building2 size={16}/></div>
+                                                Empresa Parceira {i + 1}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">1.2M / 1.0M</span>
+                                                <span className="bg-blue-50 text-[#003399] border border-blue-100 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider">120h / 100h</span>
                                             </td>
-                                            <td className="px-6 py-4 font-mono">70,086 TEM</td>
+                                            <td className="px-6 py-4 font-bold text-slate-600">70h</td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="text-teal-500 hover:text-teal-600 font-semibold text-xs border border-teal-500 rounded px-3 py-1">Ver Detalhes</button>
+                                                <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">Ver Detalhes</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -439,6 +361,24 @@ function AdminDashboard() {
 
                 </div>
             </main>
+
+            {/* Alerta Customizado */}
+            {customAlert.isOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-center mb-4">
+                            {customAlert.type === 'success' && <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center"><CheckCircle2 size={32} /></div>}
+                            {customAlert.type === 'error' && <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><XCircle size={32} /></div>}
+                            {customAlert.type === 'info' && <div className="w-16 h-16 bg-blue-50 text-[#003399] rounded-full flex items-center justify-center"><Info size={32} /></div>}
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">{customAlert.title}</h3>
+                        <p className="text-sm text-slate-500 mb-8 leading-relaxed whitespace-pre-line">{customAlert.message}</p>
+                        <button onClick={() => setCustomAlert({ ...customAlert, isOpen: false })} className={`w-full py-3.5 text-white rounded-xl font-bold transition shadow-md ${customAlert.type === 'error' ? 'bg-slate-800 hover:bg-slate-900' : 'bg-[#003399] hover:bg-[#002266]'}`}>
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
