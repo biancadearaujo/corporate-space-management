@@ -32,7 +32,7 @@ export default function Home() {
                         <Link href="/" className="flex items-center gap-2">
                             <div className="flex h-8 px-3 items-center justify-center rounded-md bg-gradient-to-br from-slate-900 to-slate-700">
                                 <span className="text-base sm:text-lg font-bold text-white">
-                                    SGEC
+                                    GECC
                                 </span>
                             </div>
                             {/*<span className="text-xl font-semibold tracking-tight text-slate-900">Sistema de Gestão de Espaços Corporativos</span>*/}
@@ -403,7 +403,7 @@ export default function Home() {
                             <div className="flex items-center gap-2">
                                 <div className="flex h-8 px-3 items-center justify-center rounded-md bg-gradient-to-br from-slate-900 to-slate-700">
                                     <span className="text-base sm:text-lg font-bold text-white">
-                                        SGEC
+                                        GECC
                                     </span>
                                 </div>
                                 <span className="text-xl font-semibold tracking-tight text-slate-900">

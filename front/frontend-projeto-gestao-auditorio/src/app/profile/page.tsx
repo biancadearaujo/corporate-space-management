@@ -5,10 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
     MapPin, Edit2, Save, X, Mail, Phone, Building2, Briefcase, 
-    ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, AlertTriangle, Search, Bell, Menu, User
+    ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, 
+    AlertTriangle, Search, Bell, Menu, User, Clock, CheckCircle2, XCircle, Info
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
+import Image from 'next/image';
 
 // --- 1. INTERFACES E HELPERS ---
 
@@ -66,7 +68,6 @@ function ProfilePage() {
     // Estados de Notificação e Busca
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
 
     // Campos dos Formulários
     const [newCompanyCnpj, setNewCompanyCnpj] = useState('');
@@ -77,7 +78,7 @@ function ProfilePage() {
 
     // --- ESTADOS DE DADOS ---
     const [formData, setFormData] = useState({
-        name: '', email: '', phone: '', role: '', company: '', department: '',
+        name: '', email: '', phone: '', role: '', company: '', department: '', avatar: '',
     });
 
     const [stats, setStats] = useState({
@@ -85,11 +86,21 @@ function ProfilePage() {
         approvedHours: 0
     });
 
-    // --- LÓGICA DA BUSCA (REDIRECT) ---
-    const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            router.push(`/collaborator-dashboard?q=${encodeURIComponent(searchTerm)}`);
-        }
+    // --- ESTADOS DO ALERTA PERSONALIZADO ---
+    const [customAlert, setCustomAlert] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'success' as 'success' | 'error' | 'info' | 'confirm',
+        onConfirm: null as (() => void) | null
+    });
+
+    const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        setCustomAlert({ isOpen: true, title, message, type, onConfirm: null });
+    };
+
+    const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+        setCustomAlert({ isOpen: true, title, message, type: 'confirm', onConfirm });
     };
 
     // --- 3. LÓGICA DE NOTIFICAÇÕES ---
@@ -146,7 +157,6 @@ function ProfilePage() {
         return () => clearInterval(interval);
     }, [token]);
 
-
     // --- 4. BUSCA DE DADOS DO PERFIL ---
     useEffect(() => {
         const fetchAllData = async () => {
@@ -154,10 +164,11 @@ function ProfilePage() {
 
             try {
                 const headers = { 'Authorization': `Bearer ${token}` };
+                // Adicionado http://localhost:8080 nas requisições
                 const [profileRes, schedulingRes, hoursRes] = await Promise.all([
-                    fetch('/collaborator/user/me', { headers }),
-                    fetch('/collaborator/unified-scheduling', { headers }),
-                    fetch('/collaborator/hours-requests', { headers })
+                    fetch('http://localhost:8080/collaborator/user/me', { headers }),
+                    fetch('http://localhost:8080/collaborator/unified-scheduling', { headers }),
+                    fetch('http://localhost:8080/collaborator/hours-requests', { headers })
                 ]);
 
                 if (profileRes.ok) {
@@ -168,10 +179,12 @@ function ProfilePage() {
                         phone: formatPhoneNumber(data.phone || ''),
                         role: translateRole(data.role || ''),
                         company: data.companyName || 'Sem Empresa', 
-                        department: data.department || ''
+                        department: data.department || '',
+                        avatar: data.avatarUrl || data.photoUrl || ''
                     });
                 }
-
+                
+                // ... (o resto da função continua igual)
                 if (schedulingRes.ok) {
                     const data = await schedulingRes.json();
                     setStats(prev => ({ ...prev, reservationsCount: (data.content || []).length }));
@@ -196,7 +209,6 @@ function ProfilePage() {
     }, [token]);
 
     // --- 5. HANDLERS GERAIS ---
-
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
@@ -223,7 +235,7 @@ function ProfilePage() {
     const handleSaveProfile = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/collaborator/user/me', {
+            const response = await fetch('http://localhost:8080/collaborator/user/me', {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: formData.name, phoneNumber: formData.phone })
@@ -231,52 +243,50 @@ function ProfilePage() {
 
             if (response.ok) {
                 setIsEditing(false);
-                alert("Perfil atualizado com sucesso!");
+                showAlert("Perfil Atualizado", "Os seus dados foram salvos com sucesso!", "success");
             } else {
                 const errorData = await response.json(); 
-                alert(`Erro ao salvar: ${errorData.message || 'Verifique os dados'}`);
+                showAlert("Erro ao Salvar", errorData.message || 'Verifique os dados informados.', "error");
             }
-        } catch (error) { console.error(error); alert("Erro de conexão."); } finally { setIsLoading(false); }
+        } catch (error) { 
+            console.error(error); 
+            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
+        } finally { 
+            setIsLoading(false); 
+        }
     };
 
-    // --- Handler: Troca de Senha ---
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (passwords.new !== passwords.confirm) {
-            alert("A nova senha e a confirmação não coincidem.");
+            showAlert("Senhas Diferentes", "A nova senha e a confirmação não coincidem.", "error");
             return;
         }
         if (passwords.new.length < 6) {
-            alert("A nova senha deve ter pelo menos 6 caracteres.");
+            showAlert("Senha Curta", "A nova senha deve ter pelo menos 6 caracteres.", "error");
             return;
         }
 
         setIsSavingPassword(true);
         try {
-            const response = await fetch('/collaborator/user/change-password', {
+            const response = await fetch('http://localhost:8080/collaborator/user/change-password', {
                 method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ 
-                    currentPassword: passwords.current, 
-                    newPassword: passwords.new 
-                })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new })
             });
 
             if (response.ok) {
-                alert("Senha alterada com sucesso!");
+                showAlert("Senha Alterada", "A sua senha foi atualizada com sucesso!", "success");
                 setIsPasswordModalOpen(false);
                 setPasswords({ current: '', new: '', confirm: '' });
             } else {
                 const errorText = await response.text(); 
-                alert(`Erro: ${errorText || "Não foi possível alterar a senha."}`);
+                showAlert("Erro", errorText || "Senha atual incorreta ou erro no servidor.", "error");
             }
         } catch (error) {
             console.error(error);
-            alert("Erro de conexão.");
+            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error");
         } finally {
             setIsSavingPassword(false);
         }
@@ -285,96 +295,99 @@ function ProfilePage() {
     const handleRequestNewCompany = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCompanyCnpj || !newCompanyEmail) return;
+        
         setIsRequestingNewCompany(true);
         try {
-            const response = await fetch('/collaborator/request-new-company', {
+            const response = await fetch('http://localhost:8080/collaborator/request-new-company', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cnpj: newCompanyCnpj, newEmail: newCompanyEmail })
             });
 
             if (response.ok) {
-                alert("Solicitação enviada com sucesso!\n\nQuando aprovada, você poderá fazer login utilizando o novo e-mail informado.");
+                showAlert(
+                    "Solicitação Enviada", 
+                    "Quando aprovada pelo Gestor, poderá fazer login utilizando o novo e-mail informado.", 
+                    "success"
+                );
                 setIsCompanyModalOpen(false);
                 setNewCompanyCnpj('');
                 setNewCompanyEmail('');
             } else {
                 const errorText = await response.text();
-                alert(`Erro na solicitação: ${errorText}`);
+                showAlert("Erro na Solicitação", errorText, "error");
             }
-        } catch (error) { console.error(error); alert("Erro ao conectar com o servidor."); } finally { setIsRequestingNewCompany(false); }
+        } catch (error) { 
+            console.error(error); 
+            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
+        } finally { 
+            setIsRequestingNewCompany(false); 
+        }
     };
 
-    const handleExitCompany = async () => {
-        const confirmExit = window.confirm("ATENÇÃO: Ao sair da empresa, sua conta atual será EXCLUÍDA permanentemente. Deseja continuar?");
-        if (!confirmExit) return;
-        setIsExitingCompany(true);
-        try {
-            const response = await fetch('/collaborator/company/exit', {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok || response.status === 204) {
-                alert("Você saiu da empresa e sua conta foi encerrada.");
-                handleLogout(); 
-            } else {
-                const msg = await response.text();
-                alert(`Erro ao sair: ${msg}`);
+    const handleExitCompany = () => {
+        // Usa o nosso novo Confirm Personalizado em vez do window.confirm
+        showConfirm(
+            "Atenção: Ação Irreversível",
+            "Ao sair da empresa, a sua conta atual e todos os dados vinculados serão EXCLUÍDOS permanentemente. Deseja mesmo continuar?",
+            async () => {
+                setIsExitingCompany(true);
+                try {
+                    const response = await fetch('http://localhost:8080/collaborator/company/exit', {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok || response.status === 204) {
+                        showAlert("Conta Encerrada", "Você saiu da empresa e a sua conta foi encerrada.", "success");
+                        setTimeout(() => handleLogout(), 2500); // Aguarda 2.5s para a pessoa ler a mensagem antes de dar logout
+                    } else {
+                        const msg = await response.text();
+                        showAlert("Erro ao Sair", msg, "error");
+                    }
+                } catch (error) { 
+                    console.error(error); 
+                    showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
+                } finally { 
+                    setIsExitingCompany(false); 
+                }
             }
-        } catch (error) { console.error(error); alert("Erro de conexão."); } finally { setIsExitingCompany(false); }
+        );
     };
 
     // --- 6. RENDERIZAÇÃO ---
     return (
         <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
             
-            {/* --- TOP NAVBAR (ESTILO ARCHDAILY/BRISA) --- */}
+            {/* --- TOP NAVBAR PADRONIZADO (Sem barra de pesquisa) --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
+                
+                {/* Lado Esquerdo: Logo e Menu Mobile */}
                 <div className="flex items-center gap-4 md:gap-6">
-                    <button 
-                        className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    >
+                    <button className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                         <Menu size={28} strokeWidth={1.5} />
                     </button>
                     <div className="flex items-center gap-2 cursor-pointer" onClick={handleDashboardClick}>
                         <div className="flex flex-col items-center leading-none text-[#003399]">
-                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/>
-                                <path d="M4 14h8v12"/>
-                                <path d="M12 2v12l8-4"/>
-                            </svg>
+                            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">
-                            brisa
-                        </span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">GECC</span>
                     </div>
                 </div>
 
-                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input 
-                            placeholder="Buscar reservas ou espaços..." 
-                            className="bg-transparent border-none text-sm outline-none w-full placeholder-slate-500 text-slate-700" 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={handleSearchSubmit}
-                        />
-                    </div>
-                </div>
-
+                {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Dashboard</Link>
                         <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
-                        <Link href="#" className="text-[#003399] transition-colors">Perfil</Link>
+                        <Link href="#" className="text-[#003399] font-semibold transition-colors">Perfil</Link>
                     </nav>
                     
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
                     
                     <div className="flex items-center gap-5">
+                        {/* Notificações */}
                         <div className="relative flex items-center">
                             <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
                                 <Bell size={18} />
@@ -412,7 +425,7 @@ function ProfilePage() {
                         </div>
 
                         <span className="text-[15px] font-medium text-slate-600 hidden md:block">
-                            {user?.name?.split(' ')[0] || 'Usuário'}
+                            {formData.name?.split(' ')[0] || user?.name?.split(' ')[0] || 'Usuário'}
                         </span>
                         <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">
                             Sair
@@ -421,165 +434,164 @@ function ProfilePage() {
                 </div>
             </header>
 
-            {/* --- MENU MOBILE EXPANSÍVEL --- */}
-            {isMobileMenuOpen && (
-                <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
-                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar..." 
-                            className="bg-transparent border-none outline-none text-slate-700 w-full text-base"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={handleSearchSubmit}
-                        />
-                    </div>
-                    <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
-                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399]">Dashboard</Link>
-                        <Link href="/calendar" className="hover:text-[#003399]">Reservas</Link>
-                        <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
-                        <Link href="#" className="text-[#003399]">Perfil</Link>
-                    </nav>
-                </div>
-            )}
-
             {/* MAIN CONTENT */}
             <main className="flex-1 overflow-y-auto">
-                <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
+                <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
                     
-                    {/* HEADER DO PERFIL */}
-                    <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
-                        {/* Area Colorida / Capa (Substituído o gradiente escuro por algo limpo) */}
-                        <div className="h-32 bg-gradient-to-r from-blue-50 to-[#F0F2F5] w-full border-b border-slate-100"></div>
+                    {/* --- HEADER DO PERFIL --- */}
+                    {/* Alinhamento ao centro (items-center) para que o Avatar fique perfeitamente alinhado com os cartões mais curtos */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-6 mt-4 lg:mt-8 items-center">
                         
-                        <div className="px-8 pb-8">
-                            <div className="relative flex flex-col md:flex-row items-center md:items-end -mt-10 gap-6">
-                                
-                                {/* Avatar */}
-                                <div className="w-24 h-24 rounded-2xl bg-white p-1 shadow-md z-10">
-                                    <div className="w-full h-full rounded-xl bg-gradient-to-br from-[#003399] to-[#0055ff] text-white flex items-center justify-center text-3xl font-bold border border-white">
-                                        {isFetching ? '...' : (formData.name?.charAt(0) || 'U')}
-                                    </div>
-                                </div>
-                                
-                                {/* Info Principal */}
-                                <div className="flex-1 text-center md:text-left mb-2">
-                                    <h3 className="text-2xl font-bold text-slate-800">{isFetching ? 'Carregando...' : formData.name}</h3>
-                                    <p className="text-slate-500 font-medium mt-0.5">{formData.role}</p>
-                                </div>
-                                
-                                {/* Estatísticas Rápidas */}
-                                <div className="flex gap-10 py-4 px-8 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-2xl font-bold text-slate-800">{stats.reservationsCount}</span>
-                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Reservas</span>
-                                    </div>
-                                    <div className="w-px h-10 bg-slate-200"></div>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-2xl font-bold text-slate-800">{stats.approvedHours.toFixed(1).replace('.0', '')}h</span>
-                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Horas</span>
-                                    </div>
-                                </div>
+                        {/* 1. Avatar e Nome */}
+                        <div className="flex flex-col items-center justify-center">
+                            {/* A div precisa ter 'relative' e 'overflow-hidden' para o next/image funcionar com 'fill' */}
+                            <div className="relative w-28 h-28 rounded-full bg-[#003399] text-white flex items-center justify-center text-5xl font-bold mb-4 shadow-sm overflow-hidden">
+                                {isFetching ? (
+                                    '...'
+                                ) : formData.avatar ? (
+                                    <Image 
+                                        src={formData.avatar} 
+                                        alt={`Foto de ${formData.name}`}
+                                        fill
+                                        sizes="112px"
+                                        className="object-cover"
+                                    />
+                                ) : (
+                                    formData.name?.charAt(0).toUpperCase() || 'U'
+                                )}
                             </div>
+                            <h3 className="text-xl font-bold text-slate-800 text-center leading-tight">
+                                {formData.name || 'Usuário'}
+                            </h3>
+                            <p className="text-sm text-slate-500 font-medium mt-1 text-center">
+                                {formData.role || 'Colaborador'}
+                            </p>
+                        </div>
+
+                        {/* 2. Minhas Reservas (Card Azul - Estilo exato do Dashboard) */}
+                        <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-[#003399] text-white border-[#003399] w-full">
+                            <p className="text-sm font-medium mb-2 text-blue-100">Minhas Reservas</p>
+                            <h3 className="text-3xl font-bold">{stats.reservationsCount}</h3>
+                            <p className="text-xs mt-2 text-blue-200/80">Histórico total</p>
+                        </div>
+
+                        {/* 3. Horas Totais (Card Branco - Estilo exato do Dashboard) */}
+                        <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-white text-slate-700 border-slate-100 w-full">
+                            <div className="flex items-center gap-2 text-sm font-medium mb-2 text-slate-500">
+                                <Clock size={16} className="text-[#003399]" />
+                                Horas Totais
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-800">
+                                {stats.approvedHours.toFixed(1).replace('.0', '')}h
+                            </h3>
+                            <p className="text-xs mt-2 text-slate-400">Acumulado</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* FORMULÁRIO DE INFORMAÇÕES */}
-                        <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100 h-full">
-                            <div className="flex justify-between items-center mb-8">
+                    {/* --- FORMULÁRIO E CARDS LATERAIS --- */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                        
+                        {/* --- FORMULÁRIO DE INFORMAÇÕES PESSOAIS --- */}
+                        <div className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+                            <div className="flex justify-between items-start mb-8">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-800">Informações Pessoais</h3>
                                     <p className="text-sm text-slate-500 mt-1">Mantenha seus dados de contato sempre atualizados.</p>
                                 </div>
                                 {!isEditing ? (
-                                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-[#003399] border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-100 transition"><Edit2 size={16} /> Editar</button>
+                                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-6 py-2.5 bg-white text-[#003399] border border-[#003399] rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm">
+                                        <Edit2 size={16} /> Editar
+                                    </button>
                                 ) : (
                                     <div className="flex gap-2">
-                                        <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition"><X size={16} /> Cancelar</button>
-                                        <button onClick={handleSaveProfile} disabled={isLoading} className="flex items-center gap-2 px-5 py-2 bg-[#003399] text-white rounded-xl text-sm font-medium hover:bg-[#002266] transition shadow-md"><Save size={16} /> {isLoading ? 'Salvando...' : 'Salvar'}</button>
+                                        <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition"><X size={16} /> Cancelar</button>
+                                        <button onClick={handleSaveProfile} disabled={isLoading} className="flex items-center gap-2 px-6 py-2.5 bg-[#003399] text-white rounded-xl text-sm font-bold hover:bg-[#002266] transition shadow-md"><Save size={16} /> {isLoading ? 'Salvando...' : 'Salvar'}</button>
                                     </div>
                                 )}
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nome Completo</label>
-                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                                {/* Substituição das cores #0b4cdb pela cor oficial #003399 em todos os inputs */}
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Nome Completo</label>
+                                    <div className={`flex items-center px-4 py-3.5 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-300 bg-white'}`}>
                                         <User size={18} className="text-slate-400 mr-3" />
-                                        <input type="text" name="name" disabled={!isEditing} value={formData.name} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" />
+                                        <input type="text" name="name" disabled={!isEditing} value={formData.name} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-800 font-medium disabled:text-slate-600" />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Email Corporativo</label>
-                                    <div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-[#F0F2F5] cursor-not-allowed">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Email Corporativo</label>
+                                    <div className="flex items-center px-4 py-3.5 rounded-xl border border-slate-300 bg-white cursor-not-allowed opacity-80">
                                         <Mail size={18} className="text-slate-400 mr-3" />
                                         <input type="email" disabled value={formData.email} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Telefone</label>
-                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Telefone</label>
+                                    <div className={`flex items-center px-4 py-3.5 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-300 bg-white'}`}>
                                         <Phone size={18} className="text-slate-400 mr-3" />
-                                        <input type="text" name="phone" disabled={!isEditing} value={formData.phone} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" placeholder="(xx) xxxxx-xxxx" />
+                                        <input type="text" name="phone" disabled={!isEditing} value={formData.phone} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-800 font-medium disabled:text-slate-600" placeholder="(xx) xxxxx-xxxx" />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Empresa</label>
-                                    <div className="flex items-center px-4 py-3 rounded-xl border border-slate-100 bg-[#F0F2F5] cursor-not-allowed">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Empresa</label>
+                                    <div className="flex items-center px-4 py-3.5 rounded-xl border border-slate-300 bg-white cursor-not-allowed opacity-80">
                                         <Building2 size={18} className="text-slate-400 mr-3" />
                                         <input type="text" disabled value={formData.company} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cargo</label>
-                                    <div className={`flex items-center px-4 py-3 rounded-xl border ${isEditing ? 'border-slate-200 bg-white' : 'border-slate-100 bg-[#F0F2F5] cursor-not-allowed'}`}>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Cargo</label>
+                                    <div className="flex items-center px-4 py-3.5 rounded-xl border border-slate-300 bg-white cursor-not-allowed opacity-80">
                                         <Briefcase size={18} className="text-slate-400 mr-3" />
                                         <input type="text" disabled value={formData.role} className="bg-transparent outline-none w-full text-sm text-slate-500 font-medium" />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Departamento</label>
-                                    <div className={`flex items-center px-4 py-3 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-100 bg-[#F0F2F5]'}`}>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Departamento</label>
+                                    <div className={`flex items-center px-4 py-3.5 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-300 bg-white'}`}>
                                         <MapPin size={18} className="text-slate-400 mr-3" />
-                                        <input type="text" name="department" disabled={!isEditing} value={formData.department} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-700 font-medium disabled:text-slate-500" />
+                                        <input type="text" name="department" disabled={!isEditing} value={formData.department} onChange={handleInputChange} className="bg-transparent outline-none w-full text-sm text-slate-800 font-medium disabled:text-slate-600" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        {/* CARDS LATERAIS */}
-                        <div className="lg:col-span-1 flex flex-col gap-6">
+                        {/* --- CARDS LATERAIS --- */}
+                        <div className="lg:col-span-1 flex flex-col gap-6 lg:gap-8">
                             
                             {/* Card: Vínculo */}
-                            <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="p-2 bg-indigo-50 rounded-xl text-[#003399]"><Building size={20} /></div>
-                                    <h4 className="font-bold text-slate-800 text-lg">Vínculo Corporativo</h4>
-                                </div>
-                                <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-500 shadow-sm">
-                                        {formData.company ? formData.company.charAt(0) : 'E'}
+                            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2 bg-blue-50 rounded-lg text-[#003399]"><Building size={20} /></div>
+                                        <h4 className="font-bold text-slate-800 text-lg">Vínculo Corporativo</h4>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Empresa Atual</p>
-                                        <p className="text-[15px] font-bold text-slate-800">{formData.company}</p>
+                                    <div className="mb-8 p-4 bg-[#F0F2F5] rounded-xl flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-500 shadow-sm shrink-0">
+                                            {formData.company ? formData.company.charAt(0) : 'E'}
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Empresa Atual</p>
+                                            <p className="text-sm font-bold text-slate-800 uppercase mt-0.5 truncate">{formData.company}</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 transition shadow-sm">
+                                <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-[#003399] text-[#003399] rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm mt-auto">
                                     <ArrowRightLeft size={16} /> Gerenciar Vínculo
                                 </button>
                             </div>
                             
                             {/* Card: Segurança */}
-                            <div className="bg-white rounded-[24px] p-6 shadow-sm border border-slate-100">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 bg-indigo-50 rounded-xl text-[#003399]"><ShieldCheck size={20} /></div>
-                                    <h4 className="font-bold text-slate-800 text-lg">Segurança</h4>
+                            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between h-full">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-blue-50 rounded-lg text-[#003399]"><ShieldCheck size={20} /></div>
+                                        <h4 className="font-bold text-slate-800 text-lg">Segurança</h4>
+                                    </div>
+                                    <p className="text-sm text-slate-500 mb-8 leading-relaxed">Mantenha sua conta segura alterando sua senha periodicamente.</p>
                                 </div>
-                                <p className="text-sm text-slate-500 mb-6 leading-relaxed">Mantenha sua conta segura alterando sua senha periodicamente.</p>
-                                <button onClick={() => setIsPasswordModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm">
+                                <button onClick={() => setIsPasswordModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-[#003399] text-[#003399] rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm mt-auto">
                                     <KeyRound size={16} /> Alterar Senha
                                 </button>
                             </div>
@@ -589,26 +601,27 @@ function ProfilePage() {
                 </div>
             </main>
 
-            {/* --- MODAL EMPRESA --- */}
+            {/* --- MODAL EMPRESA (Corrigido para fazer Scroll se a tela for pequena) --- */}
             {isCompanyModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200 relative">
+                    {/* Adicionado max-h-[90vh] e overflow-y-auto para evitar que fique gigante */}
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto">
                         <button onClick={() => setIsCompanyModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><Building size={32} /></div>
+                        <div className="text-center mb-6 mt-2">
+                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><Building size={32} /></div>
                             <h3 className="text-2xl font-bold text-slate-800">Gerenciar Empresa</h3>
-                            <p className="text-sm text-slate-500 mt-2">Cadastre-se em outra organização ou encerre seu vínculo atual.</p>
+                            <p className="text-sm text-slate-500 mt-2">Cadastre-se noutra organização ou encerre o seu vínculo atual.</p>
                         </div>
 
                         <form onSubmit={handleRequestNewCompany} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">CNPJ da Nova Empresa</label>
-                                <input type="text" placeholder="00.000.000/0001-00" value={newCompanyCnpj} onChange={(e) => setNewCompanyCnpj(e.target.value)} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition text-center text-lg font-medium tracking-wide" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">CNPJ da Nova Empresa</label>
+                                <input type="text" placeholder="00.000.000/0001-00" value={newCompanyCnpj} onChange={(e) => setNewCompanyCnpj(e.target.value)} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-300 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition text-center text-lg font-medium tracking-wide" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">E-mail para nova conta</label>
-                                <input type="email" placeholder="novo.email@exemplo.com" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">E-mail para nova conta</label>
+                                <input type="email" placeholder="novo.email@exemplo.com" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-300 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                                 <p className="text-xs text-slate-400 mt-1.5 ml-1 font-medium">Necessário informar um e-mail diferente do atual.</p>
                             </div>
                             <button type="submit" disabled={!newCompanyCnpj || !newCompanyEmail || isRequestingNewCompany} className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-2">
@@ -616,17 +629,17 @@ function ProfilePage() {
                             </button>
                         </form>
 
-                        <div className="relative my-8">
+                        <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
                             <div className="relative flex justify-center text-sm"><span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-wider text-[10px]">Área de Perigo</span></div>
                         </div>
 
-                        <button onClick={handleExitCompany} disabled={isExitingCompany} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-red-100 text-red-600 font-bold hover:bg-red-50 transition disabled:opacity-50">
-                            {isExitingCompany ? 'Saindo...' : <><Trash2 size={18} /> Sair da Empresa Atual</>}
+                        <button type="button" onClick={handleExitCompany} disabled={isExitingCompany} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-red-100 text-red-600 font-bold hover:bg-red-50 transition disabled:opacity-50">
+                            {isExitingCompany ? 'Processando...' : <><Trash2 size={18} /> Sair da Empresa Atual</>}
                         </button>
-                        <div className="mt-4 bg-red-50/50 border border-red-100 rounded-xl p-3.5 text-xs text-red-700 flex items-start gap-2 font-medium">
-                            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                            <p>Ao sair da empresa, sua conta atual e dados vinculados a ela serão excluídos permanentemente.</p>
+                        <div className="mt-4 bg-red-50 border border-red-100 rounded-xl p-3.5 text-xs text-red-700 flex items-start gap-2 font-medium">
+                            <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                            <p>Ao sair da empresa, a sua conta atual e os dados vinculados a ela serão excluídos permanentemente.</p>
                         </div>
                     </div>
                 </div>
@@ -635,27 +648,28 @@ function ProfilePage() {
             {/* --- MODAL ALTERAR SENHA --- */}
             {isPasswordModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in fade-in zoom-in-95 duration-200 relative">
+                    {/* Removido o max-h-[90vh] e overflow-y-auto */}
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative">
                         <button onClick={() => setIsPasswordModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         
-                        <div className="text-center mb-8">
-                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><KeyRound size={32} /></div>
+                        <div className="text-center mb-6 mt-2">
+                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#003399]"><KeyRound size={32} /></div>
                             <h3 className="text-2xl font-bold text-slate-800">Alterar Senha</h3>
-                            <p className="text-sm text-slate-500 mt-2">Confirme sua senha atual antes de criar uma nova.</p>
+                            <p className="text-sm text-slate-500 mt-2">Confirme a sua senha atual antes de criar uma nova.</p>
                         </div>
 
                         <form onSubmit={handleChangePassword} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Senha Atual</label>
-                                <input type="password" value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Senha Atual</label>
+                                <input type="password" value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-300 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nova Senha</label>
-                                <input type="password" value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Nova Senha</label>
+                                <input type="password" value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-300 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirmar Nova Senha</label>
-                                <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="w-full px-4 py-3 bg-[#F0F2F5] rounded-xl border border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Confirmar Nova Senha</label>
+                                <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="w-full px-4 py-3 bg-white rounded-xl border border-slate-300 focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 outline-none transition" />
                             </div>
 
                             <button type="submit" disabled={!passwords.current || !passwords.new || isSavingPassword} className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md disabled:opacity-50 mt-4">
@@ -665,6 +679,45 @@ function ProfilePage() {
                     </div>
                 </div>
             )}
+
+            {/* --- COMPONENTE DE ALERTA PERSONALIZADO (Substitui window.alert e confirm) --- */}
+            {customAlert.isOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-center mb-4">
+                            {customAlert.type === 'success' && <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center"><CheckCircle2 size={32} /></div>}
+                            {customAlert.type === 'error' && <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><XCircle size={32} /></div>}
+                            {customAlert.type === 'info' && <div className="w-16 h-16 bg-blue-50 text-[#003399] rounded-full flex items-center justify-center"><Info size={32} /></div>}
+                            {customAlert.type === 'confirm' && <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center"><AlertTriangle size={32} /></div>}
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">{customAlert.title}</h3>
+                        <p className="text-sm text-slate-500 mb-8 leading-relaxed whitespace-pre-line">{customAlert.message}</p>
+                        
+                        {customAlert.type === 'confirm' ? (
+                            <div className="flex gap-3">
+                                <button onClick={() => setCustomAlert({ ...customAlert, isOpen: false })} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition">
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setCustomAlert({ ...customAlert, isOpen: false });
+                                        if (customAlert.onConfirm) customAlert.onConfirm();
+                                    }} 
+                                    className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition shadow-md"
+                                >
+                                    Confirmar
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={() => setCustomAlert({ ...customAlert, isOpen: false })} className={`w-full py-3.5 text-white rounded-xl font-bold transition shadow-md ${customAlert.type === 'error' ? 'bg-slate-800 hover:bg-slate-900' : 'bg-[#003399] hover:bg-[#002266]'}`}>
+                                Entendi
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+            
         </div>
     );
 }

@@ -335,7 +335,7 @@ VALUES
         '80522998020',
         'COLLABORATOR',
      'db72b375-bd1b-4257-91ca-040fdd807f55',
-     'https://picsum.photos/200/600',
+     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0R9242B9N4E08zjo5LPVtSoG_r5vNJ8CJhUQvk3P2cw&s=10',
      '21988883333',
      '556677880'
     );

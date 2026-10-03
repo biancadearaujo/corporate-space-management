@@ -5,7 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export const metadata = {
-    title: 'SGEC',
+    title: 'GECC',
     description: 'Sistema Gestão de Espaços Corporativos',
 };
 

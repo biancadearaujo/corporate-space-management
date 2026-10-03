@@ -50,7 +50,7 @@ public class User {
     @Column(name = "role", nullable = false)
     private UserRole role;
 
-    @Column(name = "photo_url", nullable = true)
+    @Column(name = "photo_url", nullable = true, length = 2048)
     private String photoUrl;
 
     @Column(name = "phone_number", nullable = true)

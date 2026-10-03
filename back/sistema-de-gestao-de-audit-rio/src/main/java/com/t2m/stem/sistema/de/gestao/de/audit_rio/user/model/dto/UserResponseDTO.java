@@ -12,7 +12,8 @@ public record UserResponseDTO(
         String phone,
         String role,
         String department,
-        String companyName
+        String companyName,
+        String photoUrl
 ) {
     public static UserResponseDTO from(User user) {
         return new UserResponseDTO(
@@ -22,7 +23,8 @@ public record UserResponseDTO(
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.getDepartment(),
-                user.getCompany() != null ? user.getCompany().getName() : "Sem Empresa"
+                user.getCompany() != null ? user.getCompany().getName() : "Sem Empresa",
+                user.getPhotoUrl()
         );
     }
 }

@@ -11,7 +11,8 @@ public record UserProfileResponseDTO(
         String phone,
         String role,
         String department,
-        String companyName
+        String companyName,
+        String photoUrl
 ) {
     public static UserProfileResponseDTO from(User user) {
         return new UserProfileResponseDTO(
@@ -21,7 +22,8 @@ public record UserProfileResponseDTO(
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.getDepartment(),
-                user.getCompany() != null ? user.getCompany().getName() : "Sem Empresa"
+                user.getCompany() != null ? user.getCompany().getName() : "Sem Empresa",
+                user.getPhotoUrl()
         );
     }
 }
