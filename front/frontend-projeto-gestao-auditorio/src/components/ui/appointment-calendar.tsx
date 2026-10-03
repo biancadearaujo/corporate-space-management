@@ -131,6 +131,7 @@ export default function AppointmentCalendar() {
     const [companyFilter, setCompanyFilter] = useState<string>('all');
     const [isDayModalOpen, setIsDayModalOpen] = useState(false);
     const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
+    const [dbUserName, setDbUserName] = useState<string>('');
 
     const userRoleNormalized: 'COLLABORATOR' | 'MANAGER' | 'ADMIN' | null = 
         hasRole('ROLE_ADMIN') ? 'ADMIN' : 
@@ -155,6 +156,26 @@ export default function AppointmentCalendar() {
             return () => clearTimeout(timeoutId);
         }
     }, [view, selectedDate]);
+
+    // Busca os dados atualizados do usuário logo que o token estiver disponível
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (!token) return;
+            try {
+                // Passando o token explicitamente no cabeçalho (headers) para evitar o erro 401
+                const response = await axios.get('http://localhost:8080/collaborator/user/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.data && response.data.name) {
+                    setDbUserName(response.data.name);
+                }
+            } catch (error) {
+                console.error("Erro ao buscar perfil do usuário", error);
+            }
+        };
+        fetchUserProfile();
+    }, [token]);
 
     useEffect(() => {
         if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -541,28 +562,26 @@ export default function AppointmentCalendar() {
 
     return (
         <div className="flex flex-col h-screen bg-[#FAFAFA] font-sans overflow-hidden">
+            {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
+                {/* Lado Esquerdo: Logo e Menu Mobile */}
                 <div className="flex items-center gap-4 md:gap-6">
-                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden"><Menu size={28} strokeWidth={1.5} /></button>
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden">
+                        <Menu size={28} strokeWidth={1.5} />
+                    </button>
                     <div className="flex items-center gap-2 cursor-pointer" onClick={handleDashboardClick}>
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">GECC</span>
                     </div>
                 </div>
 
-                <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-                    <div className="w-full bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003399]/20 focus-within:border-[#003399]">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input type="text" placeholder="Buscar reservas ou espaços..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" />
-                    </div>
-                </div>
-
+                {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="/collaborator-dashboard" className="hover:text-[#003399] transition-colors">Dashboard</Link>
-                        <Link href="#" className="text-[#003399] transition-colors">Reservas</Link>
+                        <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
@@ -572,21 +591,21 @@ export default function AppointmentCalendar() {
                             <Bell size={18} />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
                         </button>
-                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">{user?.name?.split(' ')[0] || 'Usuário'}</span>
+                        {/* Nome do utilizador puxado do Banco de Dados */}
+                        <span className="text-[15px] font-medium text-slate-600 hidden md:block">
+                            {dbUserName ? dbUserName.split(' ')[0] : (user?.name?.split(' ')[0] || 'Usuário')}
+                        </span>
                         <button onClick={handleLogout} className="bg-[#003399] hover:bg-[#002266] text-white text-[15px] font-medium px-5 py-2 rounded-md transition-colors">Sair</button>
                     </div>
                 </div>
             </header>
 
+            {/* --- MENU MOBILE --- */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
-                    <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
-                        <Search size={20} className="text-slate-500 mr-3" />
-                        <input type="text" placeholder="Buscar..." className="bg-transparent border-none outline-none text-slate-700 w-full text-base" />
-                    </div>
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
                         <Link href="/collaborator-dashboard" className="hover:text-[#003399]">Dashboard</Link>
-                        <Link href="#" className="text-[#003399]">Reservas</Link>
+                        <Link href="#" className="text-[#003399] font-semibold">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
                     </nav>
