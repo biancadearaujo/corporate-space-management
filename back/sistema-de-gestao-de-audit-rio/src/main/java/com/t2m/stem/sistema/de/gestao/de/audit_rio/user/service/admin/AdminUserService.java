@@ -6,10 +6,7 @@ import com.t2m.stem.sistema.de.gestao.de.audit_rio.errors.ExceptionHandlerContro
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.errors.NotFoundException;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.User;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.UserRegistrationRequest;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.RoleUpdateDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserRegistrationResponseDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserRequestDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserResponseDTO;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.*;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.enums.RequestStatus;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.repository.UserRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.enums.UserRole;
@@ -154,5 +151,33 @@ public class AdminUserService {
         userRegistrationRequest.setRgNumber(userRequestDTO.rgNumber());
 
         userRegistrationRequestRepository.save(userRegistrationRequest);
+    }
+
+    public UserResponseDTO updateProfile(UUID userId, UserUpdateDTO dto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        user.setUsername(dto.name());
+        user.setPhoneNumber(dto.phoneNumber());
+
+        userRepository.save(user);
+
+        return UserResponseDTO.from(user);
+    }
+
+    public void changePassword(UUID userId, PasswordChangeDTO dto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("The current password is incorrect.");
+        }
+
+        if (passwordEncoder.matches(dto.newPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("The new password cannot be the same as the current one.");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepository.save(user);
     }
 }

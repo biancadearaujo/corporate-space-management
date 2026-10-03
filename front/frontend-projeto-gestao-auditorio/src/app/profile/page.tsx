@@ -47,7 +47,7 @@ const formatPhoneNumber = (value: string) => {
 // --- 2. COMPONENTE PRINCIPAL ---
 
 function ProfilePage() {
-    const { user, token, logout } = useAuth() as any;
+    const { user, token, logout, hasRole } = useAuth() as any;
     const router = useRouter();
 
     // --- ESTADOS DE INTERFACE ---
@@ -85,6 +85,13 @@ function ProfilePage() {
         reservationsCount: 0,
         approvedHours: 0
     });
+
+    // Função para obter o prefixo correto do endpoint consoante a Role do utilizador
+    const getApiPrefix = () => {
+        if (hasRole('ROLE_ADMIN')) return 'http://localhost:8080/admin';
+        if (hasRole('ROLE_MANAGER')) return 'http://localhost:8080/manager';
+        return 'http://localhost:8080/collaborator';
+    };
 
     // --- ESTADOS DO ALERTA PERSONALIZADO ---
     const [customAlert, setCustomAlert] = useState({
@@ -157,53 +164,67 @@ function ProfilePage() {
         return () => clearInterval(interval);
     }, [token]);
 
-    // --- 4. BUSCA DE DADOS DO PERFIL ---
     useEffect(() => {
         const fetchAllData = async () => {
             if (!token) return;
 
             try {
                 const headers = { 'Authorization': `Bearer ${token}` };
-                // Adicionado http://localhost:8080 nas requisições
-                const [profileRes, schedulingRes, hoursRes] = await Promise.all([
-                    fetch('http://localhost:8080/collaborator/user/me', { headers }),
-                    fetch('http://localhost:8080/collaborator/unified-scheduling', { headers }),
-                    fetch('http://localhost:8080/collaborator/hours-requests', { headers })
-                ]);
+                const prefix = getApiPrefix();
 
-                if (profileRes.ok) {
-                    const data = await profileRes.json();
-                    setFormData({
-                        name: data.name || '',
-                        email: data.email || '',
-                        phone: formatPhoneNumber(data.phone || ''),
-                        role: translateRole(data.role || ''),
-                        company: data.companyName || 'Sem Empresa', 
-                        department: data.department || '',
-                        avatar: data.avatarUrl || data.photoUrl || ''
-                    });
+                // 1. Busca os Dados do Perfil de forma independente
+                try {
+                    const profileRes = await fetch(`${prefix}/user/me`, { headers });
+                    if (profileRes.ok) {
+                        const data = await profileRes.json();
+                        
+                        let empresa = 'Sem Empresa';
+                        if (data.companyName) empresa = data.companyName;
+                        else if (data.company && data.company.name) empresa = data.company.name;
+                        else if (typeof data.company === 'string') empresa = data.company;
+
+                        setFormData({
+                            name: data.name || data.username || '',
+                            email: data.email || '',
+                            phone: formatPhoneNumber(data.phone || data.phoneNumber || ''),
+                            role: translateRole(data.role || ''),
+                            company: empresa, 
+                            department: data.department || '',
+                            avatar: data.avatarUrl || data.photoUrl || ''
+                        });
+                    }
+                } catch (e) {
+                    console.error("Erro ao buscar perfil:", e);
                 }
                 
-                // ... (código anterior do profileRes continua igual)
-
-                if (schedulingRes.ok) {
-                    const data = await schedulingRes.json();
-                    // Adicionado o filtro para contar apenas reservas com status 'APPROVED'
-                    const approvedReservations = (data.content || []).filter((r: any) => r.status === 'APPROVED');
-                    setStats(prev => ({ ...prev, reservationsCount: approvedReservations.length }));
+                // 2. Busca as Reservas de forma independente
+                try {
+                    const schedulingRes = await fetch(`${prefix}/unified-scheduling`, { headers });
+                    if (schedulingRes.ok) {
+                        const data = await schedulingRes.json();
+                        const content = data.content || data || [];
+                        const approvedReservations = content.filter((r: any) => r.status === 'APPROVED' || r.status === 'CONFIRMED');
+                        setStats(prev => ({ ...prev, reservationsCount: approvedReservations.length }));
+                    }
+                } catch (e) {
+                    console.error("Endpoint de reservas não encontrado para este perfil.");
                 }
 
-                if (hoursRes.ok) {
-                    const data = await hoursRes.json();
-                    // Este já estava correto! Soma apenas as horas onde o status é 'APPROVED'
-                    const totalHours = (data.content || [])
-                        .filter((r: any) => r.status === 'APPROVED')
-                        .reduce((acc: number, curr: any) => acc + (Number(curr.requestedHours) || 0), 0);
-                    setStats(prev => ({ ...prev, approvedHours: totalHours }));
+                // 3. Busca as Horas de forma independente
+                try {
+                    const hoursRes = await fetch(`${prefix}/hours-requests`, { headers });
+                    if (hoursRes.ok) {
+                        const data = await hoursRes.json();
+                        const content = data.content || data || [];
+                        const totalHours = content
+                            .filter((r: any) => r.status === 'APPROVED')
+                            .reduce((acc: number, curr: any) => acc + (Number(curr.requestedHours || curr.hours) || 0), 0);
+                        setStats(prev => ({ ...prev, approvedHours: totalHours }));
+                    }
+                } catch (e) {
+                    console.error("Endpoint de horas não encontrado para este perfil.");
                 }
 
-            } catch (error) {
-                console.error("Erro ao carregar dados:", error);
             } finally {
                 setIsFetching(false);
             }
@@ -239,10 +260,14 @@ function ProfilePage() {
     const handleSaveProfile = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:8080/collaborator/user/me', {
+            const response = await fetch(`${getApiPrefix()}/user/me`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: formData.name, phoneNumber: formData.phone })
+                // Garanta que envia "name" e "phoneNumber" para bater certo com o seu DTO!
+                body: JSON.stringify({ 
+                    name: formData.name, 
+                    phoneNumber: formData.phone 
+                })
             });
 
             if (response.ok) {

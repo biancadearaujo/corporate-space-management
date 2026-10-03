@@ -14,6 +14,7 @@ import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.repository.UserRegistrat
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.validator.UserValidator;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public class ManagerEmployeeService {
     private UserRegistrationRequestRepository userRegistrationRequestRepository;
     private CompanyRepository companyRepository;
     private UserValidator userValidator;
+    private PasswordEncoder passwordEncoder;
 
     public UserResponseDTO assignEmployeeToCompany(UUID id, AssignEmployeeToCompanyDTO assignEmployeeToCompanyDTO) {
         UserRegistrationRequest userRegistrationRequest = userRegistrationRequestRepository.findById(id).orElseThrow(() ->
@@ -38,7 +40,9 @@ public class ManagerEmployeeService {
 
         user.setUsername(userRegistrationRequest.getUsername());
         user.setEmail(assignEmployeeToCompanyDTO.email());
-        user.setPassword(userRegistrationRequest.getPassword());
+
+        user.setPassword(passwordEncoder.encode(userRegistrationRequest.getPassword()));
+
         user.setCpf(userRegistrationRequest.getCpf());
         user.setCompany(currentUser.getCompany());
         userRegistrationRequest.setStatus(RequestStatus.APPROVED);
@@ -82,7 +86,9 @@ public class ManagerEmployeeService {
         User user = new User();
         user.setUsername(dto.username());
         user.setEmail(dto.email());
-        user.setPassword(dto.password());
+
+        user.setPassword(passwordEncoder.encode(dto.password()));
+
         user.setCpf(dto.cpf());
         user.setRgNumber(dto.rgNumber());
         user.setPhoneNumber(dto.phoneNumber());
@@ -95,7 +101,9 @@ public class ManagerEmployeeService {
 
         request.setUsername(dto.username());
         request.setEmail(dto.email());
-        request.setPassword(dto.password());
+
+        request.setPassword(passwordEncoder.encode(dto.password()));
+
         request.setCpf(dto.cpf());
         request.setRgNumber(dto.rgNumber());
         request.setPhoneNumber(dto.phoneNumber());

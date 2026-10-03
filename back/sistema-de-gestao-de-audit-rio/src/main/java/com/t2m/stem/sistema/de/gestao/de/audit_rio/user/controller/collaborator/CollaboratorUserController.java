@@ -31,6 +31,7 @@ public class CollaboratorUserController {
         return ResponseEntity.ok(user);
     }
 
+    @PreAuthorize("hasRole('COLLABORATOR')")
     @GetMapping("/user/me")
     public ResponseEntity<UserResponseDTO> getMyProfile() {
         User user = userValidator.getAuthenticatedUser();

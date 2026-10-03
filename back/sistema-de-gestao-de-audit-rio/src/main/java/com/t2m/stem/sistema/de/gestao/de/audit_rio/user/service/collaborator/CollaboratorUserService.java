@@ -48,11 +48,11 @@ public class CollaboratorUserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("A senha atual está incorreta.");
+            throw new IllegalArgumentException("The current password is incorrect.");
         }
 
         if (passwordEncoder.matches(dto.newPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("A nova senha não pode ser igual à atual.");
+            throw new IllegalArgumentException("The new password cannot be the same as the current one.");
         }
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));

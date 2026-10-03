@@ -290,11 +290,11 @@ VALUES (
         'username2',
         'username2@email.com',
         '$2a$10$GiseHkdvwOFr7A9KRWbeiOmg/PYPhWVjdm42puLfOzR/gIAQrsAGy',
-        '09876543212',
+        '73121445006',
         'MANAGER',
         'db72b375-bd1b-4257-91ca-040fdd807f55',
         '21999991111',
-        '556677889'
+        '267580460'
        );
 
 INSERT INTO users (user_id, username, email, password, cpf, role, company_id, photo_url, phone_number, rg_number)
@@ -336,8 +336,8 @@ VALUES
         'COLLABORATOR',
      'db72b375-bd1b-4257-91ca-040fdd807f55',
      'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0R9242B9N4E08zjo5LPVtSoG_r5vNJ8CJhUQvk3P2cw&s=10',
-     '21988883333',
-     '556677880'
+     '24776565434',
+     '128372886'
     );
 
 INSERT INTO users (user_id, username, email, password, cpf, role, company_id, photo_url, phone_number, rg_number)

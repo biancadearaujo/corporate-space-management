@@ -1,11 +1,10 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.user.controller.admin;
 
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.RoleUpdateDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserRegistrationResponseDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserRequestDTO;
-import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.UserResponseDTO;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.User;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.dto.*;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.model.enums.RequestStatus;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.service.admin.AdminUserService;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.validator.UserValidator;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +24,15 @@ import java.util.UUID;
 @AllArgsConstructor
 public class AdminUserController {
     private AdminUserService adminUserService;
+    private UserValidator userValidator;
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/user/me")
+    public ResponseEntity<UserResponseDTO> getMyProfile() {
+        User user = userValidator.getAuthenticatedUser();
+
+        return ResponseEntity.ok(UserResponseDTO.from(user));
+    }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping({"/user"})
@@ -93,5 +101,25 @@ public class AdminUserController {
 
         var user = adminUserService.changeUserRole(userId, roleDto);
         return ResponseEntity.ok(user);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/user/me")
+    public ResponseEntity<UserResponseDTO> updateMyProfile(@RequestBody @Valid UserUpdateDTO dto) {
+        User currentUser = userValidator.getAuthenticatedUser();
+
+        var updatedUser = adminUserService.updateProfile(currentUser.getUserId(), dto);
+
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/user/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody @Valid PasswordChangeDTO dto) {
+        User currentUser = userValidator.getAuthenticatedUser();
+
+        adminUserService.changePassword(currentUser.getUserId(), dto);
+
+        return ResponseEntity.ok().build();
     }
 }
