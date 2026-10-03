@@ -166,16 +166,22 @@ function CollaboratorDashboard() {
             });
             if (response.ok) { 
                 const data = await response.json(); 
-                setQuota({ used: data?.usedHours || 0, total: data?.totalHours || 0 }); 
+                // Mapeando "usedHours" para o uso e "month" para o total da cota mensal
+                setQuota({ 
+                    used: data?.usedHours || 0, 
+                    total: data?.month || 0 
+                }); 
             }
-        } catch (error) { console.error("Erro ao buscar cota:", error); }
+        } catch (error) { 
+            console.error("Erro ao buscar cota:", error); 
+        }
     };
 
     // --- LÓGICA DE NOTIFICAÇÕES ---
     const fetchNotifications = async () => {
         if (!token) return;
         try {
-            const response = await fetch('/collaborator/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetch('http://localhost:8080/collaborator/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) {
                 const data = await response.json();
                 const formattedData = data.map((n: any) => ({
@@ -187,6 +193,17 @@ function CollaboratorDashboard() {
         } catch (error) { console.error(error); }
     };
 
+    const handleMarkAsRead = async (id: string) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+        try { await fetch(`http://localhost:8080/collaborator/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } }); } catch (e) {}
+    };
+
+    const handleClearNotifications = async () => {
+        setNotifications([]);
+        setIsNotifOpen(false);
+        try { await fetch('http://localhost:8080/collaborator/notifications', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); } catch (e) {}
+    };
+
     useEffect(() => {
         if (!token) return;
         
@@ -194,27 +211,18 @@ function CollaboratorDashboard() {
         fetchHoursRequests();
         fetchUnifiedSchedulings();
         fetchQuota(); 
+        fetchNotifications(); // <-- ADICIONADO AQUI: Agora o sininho carrega ao entrar na página!
         
         const interval = setInterval(() => { 
             fetchHoursRequests(); 
             fetchUnifiedSchedulings(); 
             fetchQuota(); 
+            fetchNotifications(); // <-- E atualiza a cada minuto!
         }, 60000); 
         return () => clearInterval(interval);
     }, [token]);
 
     const unreadCount = notifications.filter(n => !n.read).length;
-
-    const handleMarkAsRead = async (id: string) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        try { await fetch(`/collaborator/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } }); } catch (e) {}
-    };
-
-    const handleClearNotifications = async () => {
-        setNotifications([]);
-        setIsNotifOpen(false);
-        try { await fetch('/collaborator/notifications', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }); } catch (e) {}
-    };
 
     // --- HELPERS VISUAIS ---
     const formatStatus = (status: string) => {
