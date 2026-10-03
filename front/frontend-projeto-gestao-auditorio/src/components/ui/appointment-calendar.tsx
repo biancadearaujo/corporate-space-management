@@ -573,14 +573,15 @@ export default function AppointmentCalendar() {
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">Órbita</span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
                     </div>
                 </div>
 
                 {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        {/* AQUI: Usando o handleDashboardClick em vez de link fixo */}
+                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Dashboard</Link>
                         <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
@@ -591,7 +592,6 @@ export default function AppointmentCalendar() {
                             <Bell size={18} />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
                         </button>
-                        {/* Nome do utilizador puxado do Banco de Dados */}
                         <span className="text-[15px] font-medium text-slate-600 hidden md:block">
                             {dbUserName ? dbUserName.split(' ')[0] : (user?.name?.split(' ')[0] || 'Usuário')}
                         </span>
@@ -604,7 +604,8 @@ export default function AppointmentCalendar() {
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="hover:text-[#003399]">Dashboard</Link>
+                        {/* AQUI: Usando o handleDashboardClick também no mobile */}
+                        <Link href="#" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleDashboardClick(); }} className="hover:text-[#003399]">Dashboard</Link>
                         <Link href="#" className="text-[#003399] font-semibold">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
