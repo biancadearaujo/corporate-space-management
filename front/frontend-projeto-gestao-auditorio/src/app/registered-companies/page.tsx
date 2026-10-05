@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     Pencil, Trash2, X, ChevronLeft, ChevronRight, Search, Bell, 
-    RefreshCcw, Menu, Building2, AlertTriangle, CheckCircle2, Info
+    RefreshCcw, Menu, Building2, AlertTriangle, CheckCircle2, Info, XCircle
 } from 'lucide-react';
 import axios from 'axios';
 import Link from 'next/link';
@@ -479,7 +479,6 @@ export default function RegisteredCompaniesPage() {
                 </div>
             )}
 
-            {/* --- ALERTA CUSTOMIZADO (Sucesso/Erro) --- */}
             {customAlert.isOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
                     <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
