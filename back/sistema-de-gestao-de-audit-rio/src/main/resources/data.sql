@@ -519,18 +519,114 @@ INSERT INTO scheduling_register_request (
 -- Inserindo dados de uso para a empresa 'Laranja' (c94d1184-3b58-41b0-baa8-9df76de81138)
 -- Assumindo que 'HOJE' é final de 2024 ou 2025, ajustamos as datas para meses recentes
 
+-- 1. LIMPAR TESTES ANTERIORES PARA EVITAR CHOQUES DE PK
+DELETE FROM scheduling;
+DELETE FROM scheduling_register_request;
+
+-- 2. INSERIR TESTES NO PERÍODO DE MAIO A OUTUBRO DE 2026
+
+-- MAIO DE 2026 (10 horas)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '22222222-2222-2222-2222-222222222222', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-05-02 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '22222222-2222-2222-2222-222222222222', NULL
+         );
+
+-- JUNHO DE 2026 (5 horas)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '33333333-3333-3333-3333-333333333333', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-06-02 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             'cccccccc-cccc-cccc-cccc-cccccccccccc', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '33333333-3333-3333-3333-333333333333', NULL
+         );
+
+-- JULHO DE 2026 (12 horas)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '44444444-4444-4444-4444-444444444444', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-07-06 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             'dddddddd-dddd-dddd-dddd-dddddddddddd', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '44444444-4444-4444-4444-444444444444', NULL
+         );
+
+-- AGOSTO DE 2026 (8 horas)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '55555555-5555-5555-5555-555555555555', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-08-02 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '55555555-5555-5555-5555-555555555555', NULL
+         );
+
+-- SETEMBRO DE 2026 (15 horas)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '66666666-6666-6666-6666-666666666666', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-09-02 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '66666666-6666-6666-6666-666666666666', NULL
+         );
+
+-- OUTUBRO DE 2026 (20 horas - Mês Atual)
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
+             '77777777-7777-7777-7777-777777777777', 'Conferência Anual', 'Conferência', '2026-10-01 08:00:00', '2026-10-02 12:00:00', '2026-09-25 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-09-26 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             '1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', 'Conferência Anual', 'Conferência', '2026-10-01 08:00:00', '2026-10-02 12:00:00', '2026-09-25 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '77777777-7777-7777-7777-777777777777', NULL
+         );
+
 INSERT INTO monthly_usage_company_hours (monthly_usage_company_hours_id, usage_month, used_hours, venue_type, company_id, updated_at)
 VALUES
     -- Mês Atual (Exemplo)
-    ('20e2d649-a7b1-4056-bf04-f5fcc13271a6', '2025-11-01', 12.5, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
-    ('cc9b38c1-158e-4b84-83a7-4dc0fe79d829', '2025-11-01', 4.0, 'MEETING_ROOM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
+    ('20e2d649-a7b1-4056-bf04-f5fcc13271a6', '2026-02-11', 12.5, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
+    ('cc9b38c1-158e-4b84-83a7-4dc0fe79d829', '2026-02-12', 4.0, 'MEETING_ROOM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
 
     -- Mês Passado
-    ('16d86dd8-d837-424b-9dc0-6a9cf29e497a', '2025-10-01', 8.0, 'COWORKING', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
-    ('64547d90-d53e-4cf2-b834-c4bd3e4ba34e', '2025-10-01', 10.0, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
+    ('16d86dd8-d837-424b-9dc0-6a9cf29e497a', '2026-10-01', 8.0, 'COWORKING', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
+    ('64547d90-d53e-4cf2-b834-c4bd3e4ba34e', '2026-10-01', 10.0, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW()),
 
     -- 2 Meses atrás
-    ('8c15b583-e2a1-439e-af1b-6c397a9bdbf8', '2025-09-01', 15.0, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW());
+    ('8c15b583-e2a1-439e-af1b-6c397a9bdbf8', '2026-09-01', 15.0, 'AUDITORIUM', 'db72b375-bd1b-4257-91ca-040fdd807f55', NOW());
 
 
 -- 2. ATUALIZAR O GRÁFICO DE PIZZA (Orçamento Atual)

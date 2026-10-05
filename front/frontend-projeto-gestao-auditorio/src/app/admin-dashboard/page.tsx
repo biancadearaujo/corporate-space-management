@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-    Building2, Users, Box, LogOut, Bell, Search, Menu, 
-    Clock, FileText, Check, X, CheckCircle2, XCircle, Info, AlertTriangle
+    Building2, Bell, Menu, Check, X, CheckCircle2, XCircle, Info
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
@@ -22,12 +21,16 @@ interface AdditionalHoursResponseDTO {
     companyName?: string;
 }
 
-// Adapte esta interface conforme o seu CompanyWithQuotaResponseDTO do Java
 interface CompanyQuotaSummaryDTO {
     companyId: string;
     companyName: string;
     totalHoursLimit: number;
     usedHours: number;
+}
+
+interface MonthlyCreationDTO {
+    month: string;
+    count: number;
 }
 
 // --- Componentes Visuais Auxiliares ---
@@ -41,26 +44,39 @@ const StatCard = ({ title, value, subtext, active }: { title: string, value: str
     </div>
 );
 
-const MockBarChart = () => {
-    // Mantemos o mock visual do gráfico por agora, até o backend fornecer o histórico mensal
-    const bars = [40, 70, 30, 85, 50, 65, 45, 90, 60, 55, 80, 40];
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+// --- NOVO: Gráfico Real Dinâmico ---
+const RealBarChart = ({ data }: { data: MonthlyCreationDTO[] }) => {
+    if (!data || data.length === 0) {
+        return <div className="h-[220px] flex items-center justify-center text-slate-400">Nenhum histórico disponível.</div>;
+    }
+
+    const maxHours = Math.max(...data.map(item => item.count || 0), 1);
+
     return (
         <div className="flex items-end justify-between gap-2 px-2 min-h-[220px]">
-            {bars.map((height, i) => (
-                <div key={i} className="w-full flex flex-col justify-end items-center group cursor-pointer h-full gap-3 mt-4">
-                    <div className="w-full bg-[#F0F2F5] rounded-t-xl relative h-48 flex items-end overflow-visible">
-                        <div 
-                            className="w-full bg-[#003399] rounded-t-xl transition-all duration-700 opacity-80 group-hover:opacity-100" 
-                            style={{ height: `${height}%` }}
-                        ></div>
-                        <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-slate-600">{height}h</span>
+            {data.map((item, i) => {
+                const val = item.count || 0;
+                const monthName = item.month || ''; 
+                
+                const heightPercent = (val / maxHours) * 100;
+
+                return (
+                    <div key={i} className="w-full flex flex-col justify-end items-center group cursor-pointer h-full gap-3 mt-4">
+                        <div className="w-full bg-[#F0F2F5] rounded-t-xl relative h-48 flex items-end overflow-visible">
+                            <div 
+                                className="w-full bg-[#003399] rounded-t-xl transition-all duration-700 opacity-80 group-hover:opacity-100" 
+                                style={{ height: `${heightPercent}%` }}
+                            ></div>
+                            <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                                <span className="text-[10px] font-bold text-slate-600">{val}h</span>
+                            </div>
                         </div>
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate w-full text-center">
+                            {monthName}
+                        </span>
                     </div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{months[i]}</span>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 };
@@ -73,15 +89,15 @@ function AdminDashboard() {
     // Estados de Interface
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [dbUserName, setDbUserName] = useState<string>('');
-    const [activeTab, setActiveTab] = useState('hours'); 
 
-    // Estados de Dados
+    // Estados de Dados (Agora com monthlyHistory)
     const [pendingRequests, setPendingRequests] = useState<AdditionalHoursResponseDTO[]>([]);
     const [companiesQuotas, setCompaniesQuotas] = useState<CompanyQuotaSummaryDTO[]>([]);
     const [dashboardStats, setDashboardStats] = useState({
         totalCompanies: 0,
         activeReservations: 0,
-        consumedHours: 0
+        consumedHours: 0,
+        monthlyHistory: [] as MonthlyCreationDTO[] 
     });
     
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
@@ -119,14 +135,15 @@ function AdminDashboard() {
                 const requestsRes = await fetch('http://localhost:8080/admin/additional-hours-request/pending-admin-review-with-company', { headers });
                 if (requestsRes.ok) setPendingRequests(await requestsRes.json());
 
-                // 2. Busca estatísticas (Valide se o AdminDashboardStatsDTO possui estes campos exatos)
+                // 2. Busca estatísticas e mapeia os novos dados pro estado
                 const statsRes = await fetch('http://localhost:8080/admin/dashboard/stats', { headers });
                 if (statsRes.ok) {
                     const statsData = await statsRes.json();
                     setDashboardStats({
-                        totalCompanies: statsData.totalActiveCompanies || 0,
+                        totalCompanies: statsData.totalActiveCompanies || 0, // Ajustado para bater com o Java
                         activeReservations: statsData.activeReservations || 0,
-                        consumedHours: statsData.totalConsumedHours || 0
+                        consumedHours: statsData.totalConsumedHours || 0,    // Ajustado para bater com o Java
+                        monthlyHistory: statsData.monthlyCreations || []     // Ajustado para o gráfico
                     });
                 }
 
@@ -274,7 +291,7 @@ function AdminDashboard() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        {/* GRÁFICO */}
+                        {/* GRÁFICO DINÂMICO */}
                         <div className="lg:col-span-2 bg-white rounded-[24px] p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold text-slate-800">Utilização Mensal (Geral)</h3>
@@ -282,7 +299,7 @@ function AdminDashboard() {
                                     <div className="w-3 h-3 rounded-full bg-[#003399]"></div> Total de Horas
                                 </div>
                             </div>
-                            <MockBarChart />
+                            <RealBarChart data={dashboardStats.monthlyHistory} />
                         </div>
 
                         {/* LISTA DE SOLICITAÇÕES */}

@@ -85,9 +85,11 @@ public class AdminDashboardService {
 
         for (int i = 5; i >= 0; i--) {
             YearMonth targetMonth = currentYearMonthh.minusMonths(i);
-            LocalDate targetDate = targetMonth.atDay(1);
 
-            Double monthHours = monthlyUsageRepository.sumTotalUsageForMonthAllActiveCompanies(targetDate);
+            LocalDateTime start = targetMonth.atDay(1).atStartOfDay();
+            LocalDateTime end = targetMonth.atEndOfMonth().atTime(23, 59, 59);
+
+            Double monthHours = schedulingRepository.sumApprovedHoursInMonth(start, end);
             long hoursAsLong = (monthHours != null) ? Math.round(monthHours) : 0L;
 
             String monthName = targetMonth.getMonth()

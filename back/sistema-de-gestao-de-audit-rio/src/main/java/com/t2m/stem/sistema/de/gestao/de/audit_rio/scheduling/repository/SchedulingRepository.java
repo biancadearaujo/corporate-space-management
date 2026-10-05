@@ -31,14 +31,11 @@ public interface SchedulingRepository extends JpaRepository<Scheduling, UUID> {
     );
 
     @Query(value = """
-    SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0), 0) 
+    SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (end_at - start_at)) / 3600), 0) 
     FROM scheduling 
     WHERE start_at >= :start AND start_at <= :end
     """, nativeQuery = true)
-    Double sumApprovedHoursInMonth(
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end
-    );
+    Double sumApprovedHoursInMonth(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     Scheduling findByRegisterRequest(SchedulingRegisterRequest registerRequest);
 }
