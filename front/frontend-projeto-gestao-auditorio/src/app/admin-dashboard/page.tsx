@@ -23,9 +23,10 @@ interface AdditionalHoursResponseDTO {
 
 interface CompanyQuotaSummaryDTO {
     companyId: string;
-    companyName: string;
-    totalHoursLimit: number;
-    usedHours: number;
+    name: string;
+    monthlyLimitHours: number;
+    consumedHours: number;
+    additionalHoursApproved: number;
 }
 
 interface MonthlyCreationDTO {
@@ -381,34 +382,70 @@ function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 bg-white">
-                                    {companiesQuotas.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
-                                                Nenhuma empresa com cota registrada.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        companiesQuotas.map((company, i) => (
+                                {companiesQuotas.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
+                                            Nenhuma empresa com cota registada.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    companiesQuotas.map((company, i) => {
+                                        const totalLimit = (company.monthlyLimitHours || 0) + (company.additionalHoursApproved || 0);
+                                        const consumed = company.consumedHours || 0;
+                                        const availableHours = totalLimit - consumed;
+                                        
+                                        // UX: Lógica para a cor da barra de progresso baseada no consumo
+                                        const percentUsed = totalLimit > 0 ? Math.min((consumed / totalLimit) * 100, 100) : 0;
+                                        let progressColor = "bg-emerald-500"; // Verde por defeito (confortável)
+                                        if (percentUsed >= 75) progressColor = "bg-orange-500"; // Laranja (alerta de uso elevado)
+                                        if (percentUsed >= 90) progressColor = "bg-red-500"; // Vermelho (limite quase atingido)
+
+                                        return (
                                             <tr key={company.companyId || i} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#003399] shrink-0"><Building2 size={16}/></div>
-                                                    {company.companyName}
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#003399] shrink-0">
+                                                        <Building2 size={16}/>
+                                                    </div>
+                                                    {company.name}
                                                 </td>
+                                                
+                                                {/* UX Melhorada: Barra de Progresso + Labels Explícitas */}
                                                 <td className="px-6 py-4">
-                                                    <span className="bg-blue-50 text-[#003399] border border-blue-100 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider">
-                                                        {company.usedHours || 0}h / {company.totalHoursLimit || 0}h
+                                                    <div className="flex flex-col gap-1.5 w-full max-w-[140px]">
+                                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
+                                                            <span className="text-slate-700">{consumed}h usadas</span>
+                                                            <span className="text-slate-400">de {totalLimit}h</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                            <div 
+                                                                className={`h-full ${progressColor} transition-all duration-500`} 
+                                                                style={{ width: `${percentUsed}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* UX Melhorada: Indicação clara do que está livre, com cor de ênfase se esgotado */}
+                                                <td className="px-6 py-4 font-bold">
+                                                    <span className={`text-xs px-2.5 py-1 rounded-md border ${
+                                                        availableHours <= 0 
+                                                            ? 'bg-red-50 text-red-600 border-red-100' 
+                                                            : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                    }`}>
+                                                        {availableHours <= 0 ? 'Sem horas' : `${availableHours}h livres`}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 font-bold text-slate-600">
-                                                    {(company.totalHoursLimit || 0) - (company.usedHours || 0)}h
-                                                </td>
+                                                
                                                 <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">Ver Detalhes</button>
+                                                    <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">
+                                                        Ver Detalhes
+                                                    </button>
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
+                                        );
+                                    })
+                                )}
+                            </tbody>
                             </table>
                         </div>
                     </div>

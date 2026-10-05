@@ -11,6 +11,7 @@ public record CompanyWithQuotaResponseDTO(
         String email,
         String cnpj,
         double monthlyLimitHours,
+        double consumedHours,
         double additionalHoursApproved
 
 ) {
@@ -23,6 +24,7 @@ public record CompanyWithQuotaResponseDTO(
                 company.getEmail(),
                 company.getCnpj(),
                 quota.getMonthlyLimitHours(),
+                quota.getConsumedHours(),
                 quota.getAdditionalHoursApproved()
         );
     }
