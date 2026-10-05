@@ -4,6 +4,7 @@ import java.util.List;
 
 public record AdminDashboardStatsDTO(
         double totalConsumedHours,
+        long activeReservations,
         long totalActiveCompanies,
         long totalAlerts,
         List<AdminAlertDTO> alertsList,

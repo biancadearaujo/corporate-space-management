@@ -281,12 +281,12 @@ VALUES ('550e8400-e29b-41d4-a716-446655440000',
         '58a5bfab-eacd-49e9-b1b3-58f43b954056',
         'https://picsum.photos/200/300',
         '21988881111',
-        '  '
+        '152733620'
        );
 
 INSERT INTO users (user_id, username, email, password, cpf, role, company_id, phone_number, rg_number)
 VALUES (
-        'fa89de52-3410-4378-933a-b0c42349c07f',
+        '16dea13c-abe5-4430-babf-962bf45b0af5',
         'username2',
         'username2@email.com',
         '$2a$10$GiseHkdvwOFr7A9KRWbeiOmg/PYPhWVjdm42puLfOzR/gIAQrsAGy',
@@ -294,7 +294,7 @@ VALUES (
         'MANAGER',
         'db72b375-bd1b-4257-91ca-040fdd807f55',
         '21999991111',
-        '267580460'
+        '449603246'
        );
 
 INSERT INTO users (user_id, username, email, password, cpf, role, company_id, photo_url, phone_number, rg_number)

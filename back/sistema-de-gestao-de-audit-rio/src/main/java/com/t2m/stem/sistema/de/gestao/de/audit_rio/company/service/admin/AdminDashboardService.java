@@ -8,6 +8,8 @@ import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.Additional
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.CompanyHoursQuotaRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.CompanyRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.repository.MonthlyUsageCompanyHoursRepository;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.model.enums.SchedulingRequestStatus;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.scheduling.repository.SchedulingRepository;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.validator.UserValidator;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,13 +31,26 @@ public class AdminDashboardService {
     private CompanyHoursQuotaRepository companyHoursQuotaRepository;
     private AdditionalHoursRequestRepository additionalHoursRequestRepository;
     private UserValidator userValidator;
+    private SchedulingRepository schedulingRepository;
 
     public AdminDashboardStatsDTO getAdminStats() {
         userValidator.validateAdminAccess();
 
         LocalDate currentMonthDate = YearMonth.now().atDay(1);
-        Double totalHours = monthlyUsageRepository.sumTotalUsageForMonthAllActiveCompanies(currentMonthDate);
+
+        YearMonth currentYearMonth = YearMonth.now();
+        LocalDateTime startOfMonth = currentYearMonth.atDay(1).atStartOfDay();
+        LocalDateTime endOfMonth = currentYearMonth.atEndOfMonth().atTime(23, 59, 59);
+
+        Double totalHours = schedulingRepository.sumApprovedHoursInMonth(startOfMonth, endOfMonth);
+        if (totalHours == null) totalHours = 0.0;
+
         long totalCompanies = companyRepository.countByDeletedFalse();
+
+        long activeReservations = schedulingRepository.countActiveReservationsInMonth(
+                startOfMonth,
+                endOfMonth
+        );
 
         List<AdminAlertDTO> alerts = new ArrayList<>();
 
@@ -65,30 +80,30 @@ public class AdminDashboardService {
 
         long totalAlertsCount = alerts.size();
 
-        List<MonthlyCreationDTO> monthlyCreations = new ArrayList<>();
-        YearMonth currentYearMonth = YearMonth.now();
+        List<MonthlyCreationDTO> monthlyHistory = new ArrayList<>();
+        YearMonth currentYearMonthh = YearMonth.now();
 
         for (int i = 5; i >= 0; i--) {
-            YearMonth targetMonth = currentYearMonth.minusMonths(i);
+            YearMonth targetMonth = currentYearMonthh.minusMonths(i);
+            LocalDate targetDate = targetMonth.atDay(1);
 
-            LocalDateTime start = targetMonth.atDay(1).atStartOfDay();
-            LocalDateTime end = targetMonth.atEndOfMonth().atTime(23, 59, 59);
-
-            long count = companyRepository.countByCreatedAtBetween(start, end);
+            Double monthHours = monthlyUsageRepository.sumTotalUsageForMonthAllActiveCompanies(targetDate);
+            long hoursAsLong = (monthHours != null) ? Math.round(monthHours) : 0L;
 
             String monthName = targetMonth.getMonth()
                     .getDisplayName(TextStyle.SHORT, new Locale("pt", "BR"))
                     .toUpperCase();
 
-            monthlyCreations.add(new MonthlyCreationDTO(monthName, count));
+            monthlyHistory.add(new MonthlyCreationDTO(monthName, hoursAsLong));
         }
 
         return new AdminDashboardStatsDTO(
                 totalHours,
+                activeReservations,
                 totalCompanies,
                 totalAlertsCount,
                 alerts,
-                monthlyCreations
+                monthlyHistory
         );
     }
 }

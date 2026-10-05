@@ -22,6 +22,14 @@ interface AdditionalHoursResponseDTO {
     companyName?: string;
 }
 
+// Adapte esta interface conforme o seu CompanyWithQuotaResponseDTO do Java
+interface CompanyQuotaSummaryDTO {
+    companyId: string;
+    companyName: string;
+    totalHoursLimit: number;
+    usedHours: number;
+}
+
 // --- Componentes Visuais Auxiliares ---
 const StatCard = ({ title, value, subtext, active }: { title: string, value: string | number, subtext?: string, active?: boolean }) => (
     <div className={`p-6 rounded-[24px] shadow-sm border transition-all duration-300 ${
@@ -34,6 +42,7 @@ const StatCard = ({ title, value, subtext, active }: { title: string, value: str
 );
 
 const MockBarChart = () => {
+    // Mantemos o mock visual do gráfico por agora, até o backend fornecer o histórico mensal
     const bars = [40, 70, 30, 85, 50, 65, 45, 90, 60, 55, 80, 40];
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     return (
@@ -64,10 +73,17 @@ function AdminDashboard() {
     // Estados de Interface
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [dbUserName, setDbUserName] = useState<string>('');
-    const [activeTab, setActiveTab] = useState('hours'); // Aba para listagens no centro
+    const [activeTab, setActiveTab] = useState('hours'); 
 
     // Estados de Dados
     const [pendingRequests, setPendingRequests] = useState<AdditionalHoursResponseDTO[]>([]);
+    const [companiesQuotas, setCompaniesQuotas] = useState<CompanyQuotaSummaryDTO[]>([]);
+    const [dashboardStats, setDashboardStats] = useState({
+        totalCompanies: 0,
+        activeReservations: 0,
+        consumedHours: 0
+    });
+    
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
     
     // Estados de Ação
@@ -93,29 +109,38 @@ function AdminDashboard() {
     }, [token]);
 
     useEffect(() => {
-        const fetchPendingRequests = async () => {
+        const fetchAllData = async () => {
             if (!token) return;
             setIsLoadingRequests(true);
             try {
-                const response = await fetch('http://localhost:8080/admin/additional-hours-request/pending-admin-review-with-company', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Falha ao buscar');
-                const data = await response.json();
-                setPendingRequests(data);
-            } catch (error) {
-                console.error(error);
-                if (pendingRequests.length === 0) {
-                    setPendingRequests([
-                        { additionalHoursRequestId: '1', companyName: 'Tech Solutions', requestedHours: 5, justification: 'Projeto Extra', status: 'PENDING', companyId: '1', requesterId: '1' },
-                        { additionalHoursRequestId: '2', companyName: 'Inova Soft', requestedHours: 12, justification: 'Hackathon', status: 'PENDING', companyId: '2', requesterId: '2' },
-                    ]);
+                const headers = { 'Authorization': `Bearer ${token}` };
+
+                // 1. Busca pendências
+                const requestsRes = await fetch('http://localhost:8080/admin/additional-hours-request/pending-admin-review-with-company', { headers });
+                if (requestsRes.ok) setPendingRequests(await requestsRes.json());
+
+                // 2. Busca estatísticas (Valide se o AdminDashboardStatsDTO possui estes campos exatos)
+                const statsRes = await fetch('http://localhost:8080/admin/dashboard/stats', { headers });
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    setDashboardStats({
+                        totalCompanies: statsData.totalActiveCompanies || 0,
+                        activeReservations: statsData.activeReservations || 0,
+                        consumedHours: statsData.totalConsumedHours || 0
+                    });
                 }
+
+                // 3. Busca tabela de cotas por empresa
+                const companiesRes = await fetch('http://localhost:8080/admin/company-hours-quota/with-quota', { headers });
+                if (companiesRes.ok) setCompaniesQuotas(await companiesRes.json());
+
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
             } finally {
                 setIsLoadingRequests(false);
             }
         };
-        fetchPendingRequests();
+        fetchAllData();
     }, [token]);
 
     // Handlers
@@ -241,9 +266,9 @@ function AdminDashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <StatCard title="Total de Empresas" value="12" active={true} />
-                        <StatCard title="Reservas Ativas" value="45" />
-                        <StatCard title="Horas Consumidas" value="1,230" subtext="No mês atual" />
+                        <StatCard title="Total de Empresas" value={dashboardStats.totalCompanies} active={true} />
+                        <StatCard title="Reservas Ativas" value={dashboardStats.activeReservations} />
+                        <StatCard title="Horas Consumidas" value={dashboardStats.consumedHours} subtext="No mês atual" />
                         <StatCard title="Pendências" value={pendingRequests.length} subtext="Aguardando admin" />
                     </div>
 
@@ -339,21 +364,33 @@ function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 bg-white">
-                                    {[1, 2, 3].map((_, i) => (
-                                        <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#003399] shrink-0"><Building2 size={16}/></div>
-                                                Empresa Parceira {i + 1}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="bg-blue-50 text-[#003399] border border-blue-100 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider">120h / 100h</span>
-                                            </td>
-                                            <td className="px-6 py-4 font-bold text-slate-600">70h</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">Ver Detalhes</button>
+                                    {companiesQuotas.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
+                                                Nenhuma empresa com cota registrada.
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        companiesQuotas.map((company, i) => (
+                                            <tr key={company.companyId || i} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#003399] shrink-0"><Building2 size={16}/></div>
+                                                    {company.companyName}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="bg-blue-50 text-[#003399] border border-blue-100 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider">
+                                                        {company.usedHours || 0}h / {company.totalHoursLimit || 0}h
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 font-bold text-slate-600">
+                                                    {(company.totalHoursLimit || 0) - (company.usedHours || 0)}h
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">Ver Detalhes</button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
