@@ -12,7 +12,9 @@ import {
     X,
     Menu,
     Bell,
-    Check
+    Check,
+    Pencil,
+    SplitSquareHorizontal // Ícone para espaços divisíveis
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,10 +22,18 @@ import { useAuth } from '@/contexts/AuthContext';
 // --- TIPAGEM ATUALIZADA CONFORME SEU DTO JAVA ---
 
 interface NewEquipment {
-    name: string;              // @NotNull(message = "Name cannot be null.")
-    serialNumber: string;      // @NotNull(message = "Serial number cannot be null.")
-    conservationStatus: string;// @NotNull(message = "Conservation Status cannot be null.")
-    available: boolean;        // @NotNull(message = "Available status cannot be null.")
+    id?: string;
+    name: string;              
+    serialNumber: string;      
+    conservationStatus: string;
+    available: boolean;        
+}
+
+interface NewSubVenue {
+    subVenueId?: string; // Para edição
+    name: string;
+    capacity: string;
+    maximumMonths: number;
 }
 
 interface Venue {
@@ -33,9 +43,12 @@ interface Venue {
     size: string | number;
     image: string;
     parking: boolean;
+    divisible: boolean; // Adicionado para carregar na edição
     minimumHoursToCancel: number;
     venueType?: string;
     equipments?: NewEquipment[]; 
+    accessibility?: AccessibilityPayload;
+    subVenues?: NewSubVenue[]; // Adicionado para carregar na edição
 }
 
 interface VenueResponse {
@@ -47,6 +60,7 @@ interface VenueResponse {
 }
 
 interface AccessibilityPayload {
+    accessibilityId?: string;
     accessRamp: boolean;
     elevator: boolean;
     accessibleBathroom: boolean;
@@ -70,6 +84,9 @@ export default function SpaceRegistrationAndList() {
     const [dbUserName, setDbUserName] = useState<string>('');
     const [saving, setSaving] = useState(false);
     
+    // --- ESTADO PARA CONTROLAR EDIÇÃO ---
+    const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
+
     // Estados de Acessibilidade
     const [hasAccessibility, setHasAccessibility] = useState(false);
     const [accessData, setAccessData] = useState<AccessibilityPayload>({
@@ -77,11 +94,9 @@ export default function SpaceRegistrationAndList() {
         directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
     });
 
-    // --- ESTADOS DE EQUIPAMENTO (ATUALIZADO) ---
+    // --- ESTADOS DE EQUIPAMENTO ---
     const [hasEquipment, setHasEquipment] = useState(false);
     const [equipmentList, setEquipmentList] = useState<NewEquipment[]>([]);
-    
-    // Estado temporário para o input (Campos: name, serialNumber, status, available)
     const [tempEquipment, setTempEquipment] = useState<NewEquipment>({
         name: '',
         serialNumber: '',
@@ -89,13 +104,24 @@ export default function SpaceRegistrationAndList() {
         available: true
     });
 
-    // Estado do Espaço
-    const [spaceData, setSpaceData] = useState({
-        name: '', capacity: 0, size: 0, image: '', minimumHoursToCancel: '96',
-        parking: false, venueType: 'AUDITORIUM', divisible: false,
-        maximumMonths: 6, openingTime: '07:00:00', closingTime: '23:00:00',
-        subVenues: [], openingHours: [],
+    // --- ESTADOS PARA ESPAÇOS DIVISÍVEIS (SUB-VENUES) ---
+    const [isDivisible, setIsDivisible] = useState(false);
+    const [subVenuesList, setSubVenuesList] = useState<NewSubVenue[]>([]);
+    const [tempSubVenue, setTempSubVenue] = useState<NewSubVenue>({
+        name: '',
+        capacity: '',
+        maximumMonths: 6
     });
+
+    // Estado do Espaço
+    const defaultSpaceData = {
+        name: '', capacity: 0, size: 0, image: '', minimumHoursToCancel: '96',
+        parking: false, venueType: 'AUDITORIUM',
+        maximumMonths: 6, openingTime: '07:00:00', closingTime: '23:00:00',
+        openingHours: [],
+    };
+    
+    const [spaceData, setSpaceData] = useState(defaultSpaceData);
 
     // Estados da Lista
     const [venues, setVenues] = useState<Venue[]>([]);
@@ -140,6 +166,14 @@ export default function SpaceRegistrationAndList() {
         fetchVenues(currentPage, itemsPerPage);
     }, [fetchVenues, currentPage]);
 
+    // Quando o tipo de espaço muda, verifica se pode ser divisível
+    useEffect(() => {
+        if (spaceData.venueType !== 'AUDITORIUM') {
+            setIsDivisible(false);
+            setSubVenuesList([]); // Limpa se não for auditório
+        }
+    }, [spaceData.venueType]);
+
     // --- HANDLERS NAVBAR ---
     const handleLogout = () => {
         if (logout) logout();
@@ -171,11 +205,9 @@ export default function SpaceRegistrationAndList() {
         setAccessData((prev) => ({ ...prev, [name]: checked }));
     };
 
-    // --- HANDLERS DE EQUIPAMENTO (ATUALIZADOS) ---
+    // --- HANDLERS DE EQUIPAMENTO ---
     const handleTempEquipmentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        
-        // Tratamento especial para booleano no Select
         if (name === 'available') {
             setTempEquipment(prev => ({ ...prev, available: value === 'true' }));
         } else {
@@ -185,15 +217,11 @@ export default function SpaceRegistrationAndList() {
 
     const addEquipmentToList = (e: React.MouseEvent) => {
         e.preventDefault(); 
-        // Validação simples antes de adicionar
         if (!tempEquipment.name.trim() || !tempEquipment.serialNumber.trim()) {
             alert("Preencha o Nome e o Número de Série do equipamento.");
             return;
         }
-        
         setEquipmentList(prev => [...prev, tempEquipment]);
-        
-        // Limpa o input mantendo valores padrão
         setTempEquipment({ name: '', serialNumber: '', conservationStatus: 'NEW', available: true });
     };
 
@@ -201,9 +229,105 @@ export default function SpaceRegistrationAndList() {
         setEquipmentList(prev => prev.filter((_, i) => i !== index));
     };
 
-    // --- SUBMIT ---
+    // --- HANDLERS DE SUB-ESPAÇOS ---
+    const addSubVenueToList = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!tempSubVenue.name.trim() || !tempSubVenue.capacity) {
+            alert("Preencha o Nome e a Capacidade do sub-espaço.");
+            return;
+        }
+        setSubVenuesList(prev => [...prev, tempSubVenue]);
+        setTempSubVenue({ name: '', capacity: '', maximumMonths: 6 });
+    };
+
+    const removeSubVenueFromList = (index: number) => {
+        setSubVenuesList(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // --- HANDLER EDIÇÃO ---
+    const handleEditClick = async (venueId: string) => {
+        try {
+            const authToken = token || localStorage.getItem('token');
+            const response = await axios.get<Venue>(`http://localhost:8080/admin/venue/${venueId}`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+
+            const venue = response.data;
+            
+            setEditingVenueId(venue.venueId);
+            setSpaceData({
+                ...defaultSpaceData,
+                name: venue.name,
+                capacity: Number(venue.capacity),
+                size: Number(venue.size),
+                venueType: venue.venueType || 'AUDITORIUM',
+                parking: venue.parking,
+                minimumHoursToCancel: venue.minimumHoursToCancel.toString(),
+            });
+
+            // Lógica para Equipamentos
+            if (venue.equipments && venue.equipments.length > 0) {
+                setHasEquipment(true);
+                setEquipmentList(venue.equipments);
+            } else {
+                setHasEquipment(false);
+                setEquipmentList([]);
+            }
+
+            // Lógica para Sub-espaços
+            if (venue.divisible && venue.subVenues && venue.subVenues.length > 0) {
+                setIsDivisible(true);
+                setSubVenuesList(venue.subVenues);
+            } else {
+                setIsDivisible(false);
+                setSubVenuesList([]);
+            }
+
+            // Lógica para Acessibilidade
+            if (venue.accessibility) {
+                setHasAccessibility(true);
+                setAccessData(venue.accessibility);
+            } else {
+                setHasAccessibility(false);
+                setAccessData({
+                    accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
+                    directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
+                });
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (error) {
+            console.error("Erro ao buscar detalhes do espaço:", error);
+            alert("Não foi possível carregar os dados do espaço para edição.");
+        }
+    };
+
+    // Botão para cancelar edição
+    const cancelEditing = () => {
+        setEditingVenueId(null);
+        setSpaceData(defaultSpaceData);
+        setHasEquipment(false);
+        setEquipmentList([]);
+        setIsDivisible(false);
+        setSubVenuesList([]);
+        setHasAccessibility(false);
+        setAccessData({
+            accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
+            directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
+        });
+    };
+
+    // --- SUBMIT (Criação e Edição) ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validação da regra de negócio para espaços divisíveis
+        if (isDivisible && spaceData.venueType === 'AUDITORIUM' && subVenuesList.length === 0) {
+            alert('Um espaço divisível deve ter pelo menos um sub-espaço cadastrado.');
+            return;
+        }
+
         setSaving(true);
         try {
             const authToken = token || localStorage.getItem('token');
@@ -213,43 +337,54 @@ export default function SpaceRegistrationAndList() {
                 return;
             }
 
-            const accessPayload = hasAccessibility ? accessData : {
-                accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
-                directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
-            };
-            const accessResponse = await axios.post('http://localhost:8080/admin/accessibility', accessPayload, { headers: { Authorization: `Bearer ${authToken}` } });
+            let accessibilityId = null;
+            if (hasAccessibility) {
+                 const accessResponse = await axios.post('http://localhost:8080/admin/accessibility', accessData, { headers: { Authorization: `Bearer ${authToken}` } });
+                 accessibilityId = accessResponse.data.accessibilityId;
+            }
             
             const venuePayload = {
                 ...spaceData,
                 capacity: Number(spaceData.capacity),
                 size: Number(spaceData.size),
-                accessibilityId: accessResponse.data.accessibilityId,
-                // Envia a lista corrigida com SerialNumber e Available
-                equipments: hasEquipment ? equipmentList : [] 
+                image: spaceData.image || 'default-image.jpg', // Garante que não falha no @NotNull
+                accessibilityId: accessibilityId,
+                equipments: hasEquipment ? equipmentList : [],
+                divisible: spaceData.venueType === 'AUDITORIUM' ? isDivisible : false,
+                subVenues: (isDivisible && spaceData.venueType === 'AUDITORIUM') ? subVenuesList : []
             };
 
-            await axios.post('http://localhost:8080/admin/venue', venuePayload, { headers: { Authorization: `Bearer ${authToken}` } });
+            if (editingVenueId) {
+                await axios.put(`http://localhost:8080/admin/venue/${editingVenueId}`, venuePayload, { 
+                    headers: { Authorization: `Bearer ${authToken}` } 
+                });
+                alert('Espaço atualizado com sucesso! ✅');
+            } else {
+                await axios.post('http://localhost:8080/admin/venue', venuePayload, { 
+                    headers: { Authorization: `Bearer ${authToken}` } 
+                });
+                alert('Espaço cadastrado com sucesso! ✅');
+            }
 
-            alert('Espaço cadastrado com sucesso! ✅');
-            setSpaceData({ ...spaceData, name: '', capacity: 0, size: 0 });
-            setEquipmentList([]);
-            setHasEquipment(false);
-            setHasAccessibility(false);
-            fetchVenues(0, itemsPerPage);
+            cancelEditing();
+            fetchVenues(currentPage, itemsPerPage);
 
         } catch (err) {
             console.error(err);
-            alert('Erro ao cadastrar espaço.');
+            alert(`Erro ao ${editingVenueId ? 'atualizar' : 'cadastrar'} espaço. Verifique os campos.`);
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if(!confirm("Excluir este espaço?")) return;
+        if(!confirm("Tem a certeza que deseja excluir este espaço? Esta ação é irreversível.")) return;
         try {
             const authToken = token || localStorage.getItem('token');
             await axios.delete(`http://localhost:8080/admin/venue/${id}`, { headers: { Authorization: `Bearer ${authToken}` } });
+            if (editingVenueId === id) {
+                cancelEditing();
+            }
             fetchVenues(currentPage, itemsPerPage);
         } catch (err) {
             alert("Erro ao excluir.");
@@ -307,7 +442,7 @@ export default function SpaceRegistrationAndList() {
                 </div>
             )}
 
-            {/* --- MAIN CONTENT (Sem Sidebar) --- */}
+            {/* --- MAIN CONTENT --- */}
             <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 
                 <header className="mb-8 flex justify-between items-center">
@@ -323,13 +458,18 @@ export default function SpaceRegistrationAndList() {
 
                 {/* --- FORMULÁRIO --- */}
                 <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden mb-10">
-                    <div className="bg-slate-50 px-8 py-4 border-b border-slate-100">
+                    <div className="bg-slate-50 px-8 py-4 border-b border-slate-100 flex justify-between items-center">
                         <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                            <Building2 size={18} className="text-[#003399]"/> Dados do Espaço
+                            <Building2 size={18} className="text-[#003399]"/> 
+                            {editingVenueId ? 'Editar Espaço' : 'Novo Espaço'}
                         </h2>
+                        {editingVenueId && (
+                            <button onClick={cancelEditing} className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+                                Cancelar Edição
+                            </button>
+                        )}
                     </div>
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                        {/* ... Inputs Básicos do Espaço (Nome, Capacidade etc.) mantidos iguais ... */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="col-span-2">
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Nome do Espaço</label>
@@ -351,13 +491,92 @@ export default function SpaceRegistrationAndList() {
                                     <option value="MEETING_ROOM">Sala de Reunião</option>
                                 </select>
                             </div>
-                            <div className="flex items-center h-full pt-6">
-                                <label className="flex items-center gap-3 cursor-pointer">
+
+                            <div className="flex items-center gap-6 h-full pt-6">
+                                <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" name="parking" checked={spaceData.parking} onChange={handleSpaceChange} className="w-5 h-5 text-[#003399] rounded border-slate-300 focus:ring-[#003399]" />
-                                    <span className="text-slate-700 font-medium text-sm">Possui Estacionamento</span>
+                                    <span className="text-slate-700 font-medium text-sm">Estacionamento</span>
+                                </label>
+                                
+                                {/* CHECKBOX DIVISÍVEL (Habilitado apenas para Auditórios) */}
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isDivisible} 
+                                        onChange={(e) => setIsDivisible(e.target.checked)} 
+                                        disabled={spaceData.venueType !== 'AUDITORIUM'}
+                                        className="w-5 h-5 text-[#003399] rounded border-slate-300 focus:ring-[#003399] disabled:opacity-50" 
+                                    />
+                                    <span className={`font-medium text-sm transition-colors ${spaceData.venueType === 'AUDITORIUM' ? 'text-slate-700' : 'text-slate-400'}`}>
+                                        É Divisível?
+                                    </span>
                                 </label>
                             </div>
                         </div>
+
+                        {/* --- SECÇÃO DE SUB-ESPAÇOS (DIVISÍVEIS) --- */}
+                        {isDivisible && spaceData.venueType === 'AUDITORIUM' && (
+                            <div className="mt-6 pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
+                                <label className="flex items-center gap-2 font-semibold text-slate-800 mb-4">
+                                    <SplitSquareHorizontal size={18} className="text-[#003399]" /> Gerenciar Sub-Espaços (Ex: Sala A, Sala B)
+                                </label>
+                                
+                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mb-4">
+                                        <div className="col-span-12 md:col-span-5">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Nome do Sub-Espaço</label>
+                                            <input type="text" value={tempSubVenue.name} onChange={(e) => setTempSubVenue({...tempSubVenue, name: e.target.value})} placeholder="Ex: Auditório Ala Norte" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] transition-all" />
+                                        </div>
+                                        <div className="col-span-12 md:col-span-3">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Capacidade</label>
+                                            <input type="number" value={tempSubVenue.capacity} onChange={(e) => setTempSubVenue({...tempSubVenue, capacity: e.target.value})} placeholder="Ex: 50" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] transition-all" />
+                                        </div>
+                                        <div className="col-span-12 md:col-span-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Meses Máx.</label>
+                                            <input type="number" value={tempSubVenue.maximumMonths} onChange={(e) => setTempSubVenue({...tempSubVenue, maximumMonths: Number(e.target.value)})} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] transition-all" />
+                                        </div>
+                                        <div className="col-span-12 md:col-span-2 flex justify-end">
+                                            <button onClick={addSubVenueToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] w-full flex items-center justify-center transition-colors shadow-sm">
+                                                <Plus size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {subVenuesList.length > 0 ? (
+                                        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-[#F0F2F5]/50 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                                                    <tr>
+                                                        <th className="px-4 py-3">Sub-Espaço</th>
+                                                        <th className="px-4 py-3">Capacidade</th>
+                                                        <th className="px-4 py-3">Limite Meses</th>
+                                                        <th className="px-4 py-3 text-right">Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {subVenuesList.map((item, index) => (
+                                                        <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-3 font-semibold text-slate-700">{item.name}</td>
+                                                            <td className="px-4 py-3 text-slate-600">{item.capacity}</td>
+                                                            <td className="px-4 py-3 text-slate-600">{item.maximumMonths}</td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <button onClick={(e) => { e.preventDefault(); removeSubVenueFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 text-slate-400 text-sm bg-white rounded-xl border border-dashed border-slate-300">
+                                            Nenhum sub-espaço adicionado.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Acessibilidade */}
                         <div className="mt-6 pt-6 border-t border-slate-100">
@@ -375,7 +594,7 @@ export default function SpaceRegistrationAndList() {
                             )}
                         </div>
 
-                        {/* --- SEÇÃO DE EQUIPAMENTOS (CORRIGIDA PARA O DTO) --- */}
+                        {/* --- SEÇÃO DE EQUIPAMENTOS --- */}
                         <div className="mt-6 pt-6 border-t border-slate-100">
                             <label className="flex items-center gap-3 cursor-pointer mb-4">
                                 <input type="checkbox" checked={hasEquipment} onChange={() => setHasEquipment(!hasEquipment)} className="w-4 h-4 text-[#003399] rounded border-slate-300 focus:ring-[#003399]" />
@@ -386,71 +605,37 @@ export default function SpaceRegistrationAndList() {
 
                             {hasEquipment && (
                                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
-                                    
-                                    {/* INPUTS DE EQUIPAMENTO: Name, Serial, Status, Available */}
                                     <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mb-4">
-                                        
-                                        {/* Nome */}
                                         <div className="col-span-12 md:col-span-4">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Nome</label>
-                                            <input 
-                                                type="text" name="name"
-                                                value={tempEquipment.name} onChange={handleTempEquipmentChange}
-                                                placeholder="Ex: Notebook Dell" 
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all"
-                                            />
+                                            <input type="text" name="name" value={tempEquipment.name} onChange={handleTempEquipmentChange} placeholder="Ex: Notebook Dell" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all" />
                                         </div>
-
-                                        {/* Serial Number */}
                                         <div className="col-span-12 md:col-span-3">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Nº Série</label>
-                                            <input 
-                                                type="text" name="serialNumber"
-                                                value={tempEquipment.serialNumber} onChange={handleTempEquipmentChange}
-                                                placeholder="XYZ-123"
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all"
-                                            />
+                                            <input type="text" name="serialNumber" value={tempEquipment.serialNumber} onChange={handleTempEquipmentChange} placeholder="XYZ-123" className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all" />
                                         </div>
-
-                                        {/* Status de Conservação */}
                                         <div className="col-span-12 md:col-span-3">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Estado</label>
-                                            <select 
-                                                name="conservationStatus"
-                                                value={tempEquipment.conservationStatus} onChange={handleTempEquipmentChange}
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all"
-                                            >
+                                            <select name="conservationStatus" value={tempEquipment.conservationStatus} onChange={handleTempEquipmentChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all">
                                                 <option value="NEW">Novo</option>
                                                 <option value="USED">Usado</option>
                                                 <option value="DAMAGED">Danificado</option>
                                             </select>
                                         </div>
-
-                                        {/* Disponível (Sim/Não) */}
                                         <div className="col-span-12 md:col-span-2 flex gap-2">
                                             <div className="flex-1">
                                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Disponível?</label>
-                                                <select 
-                                                    name="available"
-                                                    value={tempEquipment.available.toString()} onChange={handleTempEquipmentChange}
-                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all"
-                                                >
+                                                <select name="available" value={tempEquipment.available.toString()} onChange={handleTempEquipmentChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 transition-all">
                                                     <option value="true">Sim</option>
                                                     <option value="false">Não</option>
                                                 </select>
                                             </div>
-                                            {/* Botão Adicionar */}
-                                            <button 
-                                                onClick={addEquipmentToList}
-                                                className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] self-end flex items-center justify-center transition-colors shadow-sm"
-                                                title="Adicionar à lista"
-                                            >
+                                            <button onClick={addEquipmentToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] self-end flex items-center justify-center transition-colors shadow-sm" title="Adicionar à lista">
                                                 <Plus size={20} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* TABELA DE ITENS ADICIONADOS */}
                                     {equipmentList.length > 0 ? (
                                         <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                                             <table className="w-full text-sm text-left">
@@ -475,7 +660,7 @@ export default function SpaceRegistrationAndList() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 py-3 text-right">
-                                                                <button onClick={() => removeEquipmentFromList(index)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
+                                                                <button onClick={(e) => { e.preventDefault(); removeEquipmentFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
                                                                     <X size={16} />
                                                                 </button>
                                                             </td>
@@ -495,14 +680,14 @@ export default function SpaceRegistrationAndList() {
 
                         <div className="flex justify-end pt-4 border-t border-slate-100">
                             <button type="submit" disabled={saving} className="bg-[#003399] hover:bg-[#002266] text-white px-8 py-3 rounded-xl font-bold shadow-sm transition-colors flex items-center gap-2 disabled:opacity-70 text-sm">
-                                {saving ? 'Salvando...' : <><Check size={18} /> Salvar Tudo</>}
+                                {saving ? 'Salvando...' : <><Check size={18} /> {editingVenueId ? 'Salvar Alterações' : 'Salvar Tudo'}</>}
                             </button>
                         </div>
                     </form>
                 </div>
 
                 {/* Tabela de Espaços (Lista) */}
-                <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+                <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden mb-10">
                     <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                         <h2 className="text-xl font-bold text-slate-800">Espaços Cadastrados</h2>
                         <button onClick={() => fetchVenues(0, itemsPerPage)} className="text-[#003399] text-sm font-semibold hover:underline">Atualizar Tabela</button>
@@ -514,19 +699,28 @@ export default function SpaceRegistrationAndList() {
                                     <th className="px-6 py-4">Nome</th>
                                     <th className="px-6 py-4">Capacidade</th>
                                     <th className="px-6 py-4">Estacionamento</th>
+                                    <th className="px-6 py-4">Divisível</th>
                                     <th className="px-6 py-4 text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {loadingList ? (
-                                    <tr><td colSpan={4} className="p-8 text-center text-slate-400 font-medium">Carregando...</td></tr>
+                                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 font-medium">Carregando...</td></tr>
                                 ) : venues.map((venue) => (
                                     <tr key={venue.venueId} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4 font-bold text-slate-800">{venue.name}</td>
                                         <td className="px-6 py-4 text-slate-600 text-sm">{venue.capacity}</td>
                                         <td className="px-6 py-4"><StatusBadge status={venue.parking} /></td>
+                                        <td className="px-6 py-4"><StatusBadge status={venue.divisible} /></td>
                                         <td className="px-6 py-4 text-right">
-                                            <button onClick={() => handleDelete(venue.venueId)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir"><Trash2 size={18} /></button>
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => handleEditClick(venue.venueId)} className="p-2 text-slate-400 hover:text-[#003399] hover:bg-blue-50 rounded-lg transition-colors" title="Editar Espaço">
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button onClick={() => handleDelete(venue.venueId)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
