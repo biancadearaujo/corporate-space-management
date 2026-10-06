@@ -19,7 +19,8 @@ public record VenueResponseDTO(
         VenueType venueType,
         boolean divisible,
         List<OpeningHoursDTO> openingHours,
-        List<EquipmentSimpleDTO> equipments
+        List<EquipmentSimpleDTO> equipments,
+        List<SubVenueResponseDTO> subVenues
 ) {
     public static VenueResponseDTO from(Venue venue) {
         return new VenueResponseDTO(
@@ -39,7 +40,10 @@ public record VenueResponseDTO(
                         venue.getEquipments().stream()
                                 .map(EquipmentSimpleDTO::from)
                                 .toList() :
-                        Collections.emptyList()
+                        Collections.emptyList(),
+                venue.getSubVenues() != null ?
+                        venue.getSubVenues().stream()
+                                .map(SubVenueResponseDTO::from).toList() : Collections.emptyList()
         );
     }
 }

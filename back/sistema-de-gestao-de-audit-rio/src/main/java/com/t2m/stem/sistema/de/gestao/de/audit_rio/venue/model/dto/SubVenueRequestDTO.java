@@ -9,7 +9,6 @@ public record SubVenueRequestDTO(
         UUID subVenueId,
         String name,
         String capacity,
-        Venue venue,
         Integer maximumMonths
 ) {
 }

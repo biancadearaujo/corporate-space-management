@@ -61,6 +61,7 @@ interface Appointment {
     createdBy: string;
     companyId: string;
     venueId: string;
+    subVenueId?: string; // Adicionado
     cnpj?: string;
     equipmentsId: string[] | null;
     updateAt: string | null;
@@ -74,7 +75,18 @@ interface ApiPageResponse<T> {
 
 const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues }: any) => {
     if (!isOpen || !date) return null;
-    const getVenueName = (venueId: string) => venues.find((v: any) => v.venueId === venueId)?.name || 'Espaço desconhecido';
+    
+    const getVenueName = (venueId: string, subVenueId?: string) => {
+        const venue = venues.find((v: any) => v.venueId === venueId);
+        if (!venue) return 'Espaço desconhecido';
+        
+        if (subVenueId && venue.subVenues) {
+            const subVenue = venue.subVenues.find((sv: any) => sv.subVenueId === subVenueId || sv.id === subVenueId);
+            if (subVenue) return `${venue.name} - ${subVenue.name}`;
+        }
+        
+        return venue.name;
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -95,7 +107,7 @@ const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues }: a
                                         {parseApiDate(appt.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(appt.endAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                     <p className="text-xs text-slate-400 mt-2 font-medium bg-white px-2 py-1 inline-block rounded-md border border-slate-200">
-                                        Espaço: {getVenueName(appt.venueId)}
+                                        Espaço: {getVenueName(appt.venueId, appt.subVenueId)}
                                     </p>
                                 </div>
                             ))
@@ -148,7 +160,6 @@ export default function AppointmentCalendar() {
                     const targetElement = scrollContainerRef.current.querySelector(`#${targetId}`);
                     
                     if (targetElement) {
-                        // Desconta 65px da altura do cabeçalho para a hora não ficar escondida
                         scrollContainerRef.current.scrollTop = (targetElement as HTMLElement).offsetTop - 65;
                     }
                 }
@@ -157,12 +168,10 @@ export default function AppointmentCalendar() {
         }
     }, [view, selectedDate]);
 
-    // Busca os dados atualizados do usuário logo que o token estiver disponível
     useEffect(() => {
         const fetchUserProfile = async () => {
             if (!token) return;
             try {
-                // Passando o token explicitamente no cabeçalho (headers) para evitar o erro 401
                 const response = await axios.get('http://localhost:8080/collaborator/user/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -235,32 +244,39 @@ export default function AppointmentCalendar() {
         async (venueId: string, subVenueId: string | null, date: Date) => {
             setLoadingAvailableTimes(true);
             setAvailableTimes([]);
+            
             const selectedVenue = venues.find((v) => v.venueId === venueId);
             if (!selectedVenue) {
                 toast.error('Espaço não encontrado.');
                 setLoadingAvailableTimes(false);
                 return;
             }
-            if (selectedVenue.venueType === 'AUDITORIUM') {
+
+            // CORREÇÃO DA LÓGICA DE AUDITÓRIOS DIVISÍVEIS
+            if (selectedVenue.venueType === 'AUDITORIUM' && selectedVenue.divisible && !subVenueId) {
                 setLoadingAvailableTimes(false);
-                return;
+                return; 
             }
+
             try {
                 const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
                 let effectiveOpeningTime = selectedVenue.openingTime || '00:00:00';
                 let effectiveClosingTime = selectedVenue.closingTime || '23:59:59';
+                
                 if (selectedVenue.divisible && subVenueId) {
-                    const selectedSubVenue = selectedVenue.subVenues?.find((sv) => sv.id === subVenueId);
+                    const selectedSubVenue = selectedVenue.subVenues?.find((sv: any) => sv.id === subVenueId || sv.subVenueId === subVenueId);
                     if (selectedSubVenue) {
-                        effectiveOpeningTime = selectedSubVenue.openingTime;
-                        effectiveClosingTime = selectedSubVenue.closingTime;
+                        if (selectedSubVenue.openingTime) effectiveOpeningTime = selectedSubVenue.openingTime;
+                        if (selectedSubVenue.closingTime) effectiveClosingTime = selectedSubVenue.closingTime;
                     }
                 }
+                
                 const daySpecificHours = selectedVenue.openingHours?.find((oh) => oh.dayOfWeek === dayOfWeek);
                 if (daySpecificHours) {
                     effectiveOpeningTime = daySpecificHours.openingTime;
                     effectiveClosingTime = daySpecificHours.closingTime;
                 }
+                
                 const times = [];
                 const [openH, openM] = effectiveOpeningTime.split(':').map(Number);
                 const [closeH, closeM] = effectiveClosingTime.split(':').map(Number);
@@ -268,21 +284,39 @@ export default function AppointmentCalendar() {
                 let currentMinute = openM;
                 const now = new Date();
                 const isTodaySelected = date.toDateString() === now.toDateString();
+                
                 while (currentHour < closeH || (currentHour === closeH && currentMinute < closeM)) {
                     const slotDateTime = new Date(date);
                     slotDateTime.setHours(currentHour, currentMinute, 0, 0);
+                    
                     if (isTodaySelected && slotDateTime.getTime() <= now.getTime()) {
                         currentMinute += 30;
                         if (currentMinute >= 60) { currentHour += 1; currentMinute -= 60; }
                         continue;
                     }
+                    
                     const timeSlotStart = slotDateTime.getTime();
                     const timeSlotEnd = new Date(slotDateTime.getTime() + 30 * 60000).getTime();
                     
+                    // LÓGICA DE CONFLITO COM SUB-ESPAÇOS
                     const isBooked = appointments.some((appointment) => {
                         const existingStart = parseApiDate(appointment.startAt).getTime();
                         const existingEnd = parseApiDate(appointment.endAt).getTime();
-                        return (timeSlotStart < existingEnd && timeSlotEnd > existingStart);
+                        const hasTimeConflict = (timeSlotStart < existingEnd && timeSlotEnd > existingStart);
+                        
+                        if (!hasTimeConflict) return false;
+
+                        if (selectedVenue.divisible) {
+                            if (subVenueId) {
+                                // Se estamos a tentar marcar a Sala A, choca com agendamentos da Sala A OU agendamentos do Auditório inteiro
+                                return appointment.venueId === venueId && (appointment.subVenueId === subVenueId || !appointment.subVenueId);
+                            } else {
+                                // Se estamos a tentar marcar o Auditório Inteiro, choca com qualquer agendamento lá dentro
+                                return appointment.venueId === venueId;
+                            }
+                        }
+                        
+                        return appointment.venueId === venueId;
                     });
 
                     if (!isBooked) times.push(`${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`);
@@ -424,15 +458,12 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // Visão SEMANAL (ALINHAMENTO PERFEITO ESTILO GOOGLE AGENDA)
+    // Visão SEMANAL
     const renderWeekView = () => {
         const weekDays = getWeekDays();
         return (
             <div className="flex flex-col h-full bg-white relative">
-                {/* 1. SCROLL CONTAINER ABRANGENDO CABEÇALHO E GRADE */}
                 <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-white relative">
-                    
-                    {/* CABEÇALHO FIXO DENTRO DO SCROLL (Isso garante alinhamento milimétrico) */}
                     <div className="flex sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
                         <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white"></div>
                         <div className="flex-1 grid grid-cols-7">
@@ -447,7 +478,6 @@ export default function AppointmentCalendar() {
                         </div>
                     </div>
                     
-                    {/* CORPO DO CALENDÁRIO */}
                     <div className="flex z-0 relative">
                         <div className="w-[60px] md:w-[80px] shrink-0 border-r border-slate-200 bg-white flex flex-col">
                             {timeSlots.map((time) => {
@@ -580,7 +610,6 @@ export default function AppointmentCalendar() {
                 {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        {/* AQUI: Usando o handleDashboardClick em vez de link fixo */}
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Dashboard</Link>
                         <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
@@ -604,7 +633,6 @@ export default function AppointmentCalendar() {
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
-                        {/* AQUI: Usando o handleDashboardClick também no mobile */}
                         <Link href="#" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleDashboardClick(); }} className="hover:text-[#003399]">Dashboard</Link>
                         <Link href="#" className="text-[#003399] font-semibold">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>

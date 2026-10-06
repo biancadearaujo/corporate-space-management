@@ -424,6 +424,7 @@ export default function SpaceRegistrationAndList() {
                         <Link href="/registered-companies" className="hover:text-[#003399] transition-colors">Empresas</Link>
                         <Link href="/register-manager" className="hover:text-[#003399] transition-colors">Gestores</Link>
                         <Link href="/registered-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Catálogo</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>

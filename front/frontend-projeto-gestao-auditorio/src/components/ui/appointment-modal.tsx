@@ -46,10 +46,15 @@ export default function AppointmentModal({
     venues,
     userRole,
     onAppointmentCreated,
+    fetchAvailableTimes, // Recebendo a função, embora na abordagem deste modal o backend pareça lidar com o choque de horários na submissão
 }: AppointmentModalProps) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [selectedVenueId, setSelectedVenueId] = useState('');
+    
+    // --- NOVO: Estado para a Sub-Sala ---
+    const [selectedSubVenueId, setSelectedSubVenueId] = useState<string>('ALL');
+
     const [currentVenue, setCurrentVenue] = useState<Venue | null>(null);
     const [date, setDate] = useState('');
     const [startTime, setStartTime] = useState('');
@@ -65,20 +70,26 @@ export default function AppointmentModal({
         message: ''
     });
 
+    // Efeito para atualizar o Venue Atual quando muda a seleção
     useEffect(() => {
         if (selectedVenueId) {
             const venue = venues.find((v: Venue) => v.venueId === selectedVenueId);
             setCurrentVenue(venue || null);
+            // Sempre que muda a sala principal, reseta a sub-sala para "Auditório Completo"
+            setSelectedSubVenueId('ALL');
         } else {
             setCurrentVenue(null);
+            setSelectedSubVenueId('ALL');
         }
     }, [selectedVenueId, venues]);
 
+    // Reseta o formulário ao fechar o modal
     useEffect(() => {
         if (!isOpen) {
             setName('');
             setDescription('');
             setSelectedVenueId('');
+            setSelectedSubVenueId('ALL'); // Reseta a sub-sala
             setCurrentVenue(null);
             setDate('');
             setStartTime('');
@@ -108,6 +119,11 @@ export default function AppointmentModal({
             description: description || "Sem descrição",
             venueId: currentVenue.venueId
         };
+
+        // --- NOVO: Anexar a SubVenue se foi selecionada ---
+        if (currentVenue.divisible && selectedSubVenueId !== 'ALL') {
+            payload.subVenueId = selectedSubVenueId;
+        }
 
         if (currentVenue.venueType === 'AUDITORIUM') {
             if (!selectedPeriod) {
@@ -164,8 +180,6 @@ export default function AppointmentModal({
             }
 
             const msgLower = backendMessage.toLowerCase();
-
-            // Mapeamento dos erros do SchedulingCreatorValidator do Java:
             
             if (msgLower.includes('disabled') || msgLower.includes("company is disabled")) {
                 setErrorModal({ isOpen: true, title: 'Empresa Inativa', message: 'A sua empresa está inativa no sistema. Novos agendamentos não são permitidos.' });
@@ -192,7 +206,6 @@ export default function AppointmentModal({
                 setErrorModal({ isOpen: true, title: 'Equipamento Indisponível', message: 'O equipamento selecionado já está reservado, quebrado ou não pertence a este espaço.' });
             } 
             else {
-                // Erro genérico
                 setErrorModal({ isOpen: true, title: 'Falha no Agendamento', message: backendMessage });
             }
 
@@ -242,6 +255,34 @@ export default function AppointmentModal({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* --- NOVO: SELECT PARA SUB-ESPAÇOS SE FOR DIVISÍVEL --- */}
+                        {currentVenue && currentVenue.divisible && currentVenue.subVenues && currentVenue.subVenues.length > 0 && (
+                            <div className="animate-in fade-in slide-in-from-top-2">
+                                <Label htmlFor="subVenue" className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
+                                    Deseja reservar apenas uma parte? (Opcional)
+                                </Label>
+                                <Select onValueChange={setSelectedSubVenueId} value={selectedSubVenueId}>
+                                    <SelectTrigger className="w-full bg-blue-50 border-blue-100 focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 rounded-lg px-3 h-10 outline-none text-sm transition-all text-slate-700">
+                                        <SelectValue placeholder="Auditório Completo" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-lg border-slate-100">
+                                        <SelectItem value="ALL" className="cursor-pointer font-semibold">
+                                            Reservar Auditório Completo
+                                        </SelectItem>
+                                        {currentVenue.subVenues.map((subVenue: any) => (
+                                            <SelectItem 
+                                                key={subVenue.id || subVenue.subVenueId} 
+                                                value={subVenue.id || subVenue.subVenueId} 
+                                                className="cursor-pointer"
+                                            >
+                                                Apenas {subVenue.name} (Capacidade: {subVenue.capacity})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         <div>
                             <Label htmlFor="date" className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Data do Agendamento *</Label>
