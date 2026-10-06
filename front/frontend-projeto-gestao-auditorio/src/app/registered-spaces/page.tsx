@@ -14,7 +14,8 @@ import {
     Bell,
     Check,
     Pencil,
-    SplitSquareHorizontal // Ícone para espaços divisíveis
+    SplitSquareHorizontal,
+    Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +31,7 @@ interface NewEquipment {
 }
 
 interface NewSubVenue {
-    subVenueId?: string; // Para edição
+    subVenueId?: string; 
     name: string;
     capacity: string;
     maximumMonths: number;
@@ -39,16 +40,16 @@ interface NewSubVenue {
 interface Venue {
     venueId: string;
     name: string;
-    capacity: string | number;
-    size: string | number;
+    capacity: string; // Garantido como String conforme o backend
+    size: string;     // Garantido como String conforme o backend
     image: string;
     parking: boolean;
-    divisible: boolean; // Adicionado para carregar na edição
+    divisible: boolean; 
     minimumHoursToCancel: number;
     venueType?: string;
     equipments?: NewEquipment[]; 
     accessibility?: AccessibilityPayload;
-    subVenues?: NewSubVenue[]; // Adicionado para carregar na edição
+    subVenues?: NewSubVenue[]; 
 }
 
 interface VenueResponse {
@@ -113,9 +114,9 @@ export default function SpaceRegistrationAndList() {
         maximumMonths: 6
     });
 
-    // Estado do Espaço
+    // Estado do Espaço (Adaptado para usar Strings em Capacity e Size)
     const defaultSpaceData = {
-        name: '', capacity: 0, size: 0, image: '', minimumHoursToCancel: '96',
+        name: '', capacity: '', size: '', image: '', minimumHoursToCancel: '96',
         parking: false, venueType: 'AUDITORIUM',
         maximumMonths: 6, openingTime: '07:00:00', closingTime: '23:00:00',
         openingHours: [],
@@ -166,11 +167,10 @@ export default function SpaceRegistrationAndList() {
         fetchVenues(currentPage, itemsPerPage);
     }, [fetchVenues, currentPage]);
 
-    // Quando o tipo de espaço muda, verifica se pode ser divisível
     useEffect(() => {
         if (spaceData.venueType !== 'AUDITORIUM') {
             setIsDivisible(false);
-            setSubVenuesList([]); // Limpa se não for auditório
+            setSubVenuesList([]); 
         }
     }, [spaceData.venueType]);
 
@@ -205,7 +205,6 @@ export default function SpaceRegistrationAndList() {
         setAccessData((prev) => ({ ...prev, [name]: checked }));
     };
 
-    // --- HANDLERS DE EQUIPAMENTO ---
     const handleTempEquipmentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'available') {
@@ -229,7 +228,6 @@ export default function SpaceRegistrationAndList() {
         setEquipmentList(prev => prev.filter((_, i) => i !== index));
     };
 
-    // --- HANDLERS DE SUB-ESPAÇOS ---
     const addSubVenueToList = (e: React.MouseEvent) => {
         e.preventDefault();
         if (!tempSubVenue.name.trim() || !tempSubVenue.capacity) {
@@ -258,14 +256,14 @@ export default function SpaceRegistrationAndList() {
             setSpaceData({
                 ...defaultSpaceData,
                 name: venue.name,
-                capacity: Number(venue.capacity),
-                size: Number(venue.size),
+                capacity: String(venue.capacity),
+                size: String(venue.size),
+                image: venue.image || '',
                 venueType: venue.venueType || 'AUDITORIUM',
                 parking: venue.parking,
-                minimumHoursToCancel: venue.minimumHoursToCancel.toString(),
+                minimumHoursToCancel: venue.minimumHoursToCancel?.toString() || '96',
             });
 
-            // Lógica para Equipamentos
             if (venue.equipments && venue.equipments.length > 0) {
                 setHasEquipment(true);
                 setEquipmentList(venue.equipments);
@@ -274,7 +272,6 @@ export default function SpaceRegistrationAndList() {
                 setEquipmentList([]);
             }
 
-            // Lógica para Sub-espaços
             if (venue.divisible && venue.subVenues && venue.subVenues.length > 0) {
                 setIsDivisible(true);
                 setSubVenuesList(venue.subVenues);
@@ -283,7 +280,6 @@ export default function SpaceRegistrationAndList() {
                 setSubVenuesList([]);
             }
 
-            // Lógica para Acessibilidade
             if (venue.accessibility) {
                 setHasAccessibility(true);
                 setAccessData(venue.accessibility);
@@ -303,7 +299,6 @@ export default function SpaceRegistrationAndList() {
         }
     };
 
-    // Botão para cancelar edição
     const cancelEditing = () => {
         setEditingVenueId(null);
         setSpaceData(defaultSpaceData);
@@ -318,11 +313,10 @@ export default function SpaceRegistrationAndList() {
         });
     };
 
-    // --- SUBMIT (Criação e Edição) ---
+    // --- SUBMIT ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validação da regra de negócio para espaços divisíveis
         if (isDivisible && spaceData.venueType === 'AUDITORIUM' && subVenuesList.length === 0) {
             alert('Um espaço divisível deve ter pelo menos um sub-espaço cadastrado.');
             return;
@@ -337,31 +331,29 @@ export default function SpaceRegistrationAndList() {
                 return;
             }
 
-            // 1. CRIA A ACESSIBILIDADE SEMPRE (Para não enviar nulo para o Java)
+            // Garante que existe sempre um registo de acessibilidade associado
             const accessPayload = hasAccessibility ? accessData : {
                 accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
                 directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
             };
             
-            // Faz o POST da acessibilidade garantindo que gera um ID
             const accessResponse = await axios.post('http://localhost:8080/admin/accessibility', accessPayload, { 
                 headers: { Authorization: `Bearer ${authToken}` } 
             });
             const generatedAccessibilityId = accessResponse.data.accessibilityId;
             
-            // 2. MONTA O PAYLOAD DO ESPAÇO
+            // Tratamento das Strings de tamanho e imagem fallback
             const venuePayload = {
                 ...spaceData,
-                capacity: Number(spaceData.capacity),
-                size: Number(spaceData.size),
-                image: spaceData.image || 'default-image.jpg', 
-                accessibilityId: generatedAccessibilityId, // Agora NUNCA vai vazio!
+                capacity: String(spaceData.capacity),
+                size: String(spaceData.size),
+                image: spaceData.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800', 
+                accessibilityId: generatedAccessibilityId, 
                 equipments: hasEquipment ? equipmentList : [],
                 divisible: spaceData.venueType === 'AUDITORIUM' ? isDivisible : false,
                 subVenues: (isDivisible && spaceData.venueType === 'AUDITORIUM') ? subVenuesList : []
             };
 
-            // 3. ENVIA PARA O BACKEND
             if (editingVenueId) {
                 await axios.put(`http://localhost:8080/admin/venue/${editingVenueId}`, venuePayload, { 
                     headers: { Authorization: `Bearer ${authToken}` } 
@@ -379,7 +371,6 @@ export default function SpaceRegistrationAndList() {
 
         } catch (err: any) {
             console.error(err);
-            // Mostra o erro exato que vem do Spring Boot para ajudar a debugar
             const errorMessage = err.response?.data?.message || err.response?.data || "Verifique os dados informados.";
             alert(`Erro do Servidor: \n${errorMessage}`);
         } finally {
@@ -404,7 +395,7 @@ export default function SpaceRegistrationAndList() {
     return (
         <div className="flex flex-col min-h-screen bg-[#FAFAFA] font-sans text-slate-800">
             
-            {/* --- TOP NAVBAR DA BRISA --- */}
+            {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
                 <div className="flex items-center gap-4 md:gap-6">
                     <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden">
@@ -448,6 +439,7 @@ export default function SpaceRegistrationAndList() {
                         <Link href="/registered-companies" className="hover:text-[#003399]">Empresas</Link>
                         <Link href="/register-manager" className="hover:text-[#003399]">Gestores</Link>
                         <Link href="/registered-spaces" className="text-[#003399] font-semibold">Espaços</Link>
+                        <Link href="/our-spaces" className="hover:text-[#003399]">Catálogo</Link>
                         <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
                     </nav>
                 </div>
@@ -482,10 +474,53 @@ export default function SpaceRegistrationAndList() {
                     </div>
                     <form onSubmit={handleSubmit} className="p-8 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            {/* --- NOME DO ESPAÇO --- */}
                             <div className="col-span-2">
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Nome do Espaço</label>
                                 <input name="name" value={spaceData.name} onChange={handleSpaceChange} required className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-slate-50 transition-all" />
                             </div>
+
+                            {/* --- URL DA IMAGEM COM PREVIEW --- */}
+                            <div className="col-span-2 flex gap-4 items-start bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                                <div className="flex-1">
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-2">
+                                        <ImageIcon size={14} className="text-[#003399]" />
+                                        Foto do Espaço (URL da Imagem) *
+                                    </label>
+                                    <input 
+                                        type="url" 
+                                        name="image" 
+                                        value={spaceData.image} 
+                                        onChange={handleSpaceChange} 
+                                        placeholder="https://site.com/foto-da-sala.jpg" 
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-white transition-all" 
+                                        required
+                                    />
+                                    <p className="text-[11px] text-slate-400 mt-1.5">Cole o link da imagem (ex: Google Drive, Imgur, sites da internet).</p>
+                                </div>
+                                
+                                <div className="shrink-0 w-24 h-24 rounded-xl border border-slate-200 overflow-hidden bg-slate-100 flex flex-col items-center justify-center shadow-sm relative group">
+                                    {spaceData.image ? (
+                                        <img 
+                                            src={spaceData.image} 
+                                            alt="Preview do espaço" 
+                                            className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                                if (!e.currentTarget.parentElement?.querySelector('.error-text')) {
+                                                    e.currentTarget.parentElement?.insertAdjacentHTML('beforeend', '<span class="error-text text-[10px] text-red-400 font-bold text-center px-2">Link<br/>Inválido</span>');
+                                                }
+                                            }} 
+                                        />
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400 font-medium text-center px-2">Sem Imagem</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* --- CAPACIDADE E TAMANHO --- */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Capacidade</label>
                                 <input type="number" name="capacity" value={spaceData.capacity} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-slate-50 transition-all" />
@@ -494,6 +529,8 @@ export default function SpaceRegistrationAndList() {
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Tamanho (m²)</label>
                                 <input type="number" step="0.1" name="size" value={spaceData.size} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-slate-50 transition-all" />
                             </div>
+
+                            {/* --- TIPO DE ESPAÇO --- */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Tipo</label>
                                 <select name="venueType" value={spaceData.venueType} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm transition-all">
@@ -503,13 +540,13 @@ export default function SpaceRegistrationAndList() {
                                 </select>
                             </div>
 
+                            {/* --- CHECKBOXES: ESTACIONAMENTO E DIVISÍVEL --- */}
                             <div className="flex items-center gap-6 h-full pt-6">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" name="parking" checked={spaceData.parking} onChange={handleSpaceChange} className="w-5 h-5 text-[#003399] rounded border-slate-300 focus:ring-[#003399]" />
                                     <span className="text-slate-700 font-medium text-sm">Estacionamento</span>
                                 </label>
                                 
-                                {/* CHECKBOX DIVISÍVEL (Habilitado apenas para Auditórios) */}
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input 
                                         type="checkbox" 
