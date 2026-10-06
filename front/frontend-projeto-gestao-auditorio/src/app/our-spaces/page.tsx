@@ -10,12 +10,13 @@ import Link from 'next/link';
 // Ícones
 import {
     Search,
-    Menu, // Novo ícone de menu hambúrguer adicionado
+    Menu, 
     Heart,
     Wifi,
     Users,
     Coffee,
-    ArrowRight
+    ArrowRight,
+    Settings // Adicionado para o botão do Admin
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,8 @@ interface VenueResponseDTO {
 }
 
 function OurSpacesPage() {
-    const { user, token, logout } = useAuth();
+    // Adicionado o hasRole com 'as any' para evitar erros de tipagem
+    const { user, token, logout, hasRole } = useAuth() as any;
     const router = useRouter();
 
     const [spaces, setSpaces] = useState<VenueResponseDTO[]>([]);
@@ -84,6 +86,13 @@ function OurSpacesPage() {
         router.replace('/'); 
     };
 
+    // Função para direcionar corretamente o Dashboard
+    const getDashboardLink = () => {
+        if (hasRole('ROLE_ADMIN')) return '/admin-dashboard';
+        if (hasRole('ROLE_MANAGER')) return '/manager-dashboard';
+        return '/collaborator-dashboard';
+    };
+
     const filteredSpaces = spaces.filter(space => 
         (space.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (space.description || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -95,11 +104,10 @@ function OurSpacesPage() {
             {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
                 <div className="flex items-center gap-4 md:gap-6">
-                    {/* O 'xl:hidden' faz com que o hambúrguer desapareça em telas grandes, igual ao Dashboard */}
                     <button className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                         <Menu size={28} strokeWidth={1.5} />
                     </button>
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/collaborator-dashboard')}>
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push(getDashboardLink())}>
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
@@ -122,8 +130,11 @@ function OurSpacesPage() {
 
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="hover:text-[#003399] transition-colors">Dashboard</Link>
-                        <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        <Link href={getDashboardLink()} className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        {/* Se for Administrador, pode ocultar o botão "Reservas" ou direcioná-lo para onde fizer sentido */}
+                        {!hasRole('ROLE_ADMIN') && (
+                            <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        )}
                         <Link href="/our-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
@@ -137,7 +148,7 @@ function OurSpacesPage() {
                 </div>
             </header>
 
-            {/* --- MENU MOBILE EXPANSÍVEL (Opcional, ativado pelo menu hambúrguer) --- */}
+            {/* --- MENU MOBILE EXPANSÍVEL --- */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
                     <div className="md:hidden bg-[#F0F2F5] rounded-md flex items-center px-4 py-2.5">
@@ -151,8 +162,10 @@ function OurSpacesPage() {
                         />
                     </div>
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="hover:text-[#003399]">Dashboard</Link>
-                        <Link href="/calendar" className="hover:text-[#003399]">Minhas Reservas</Link>
+                        <Link href={getDashboardLink()} className="hover:text-[#003399]">Dashboard</Link>
+                        {!hasRole('ROLE_ADMIN') && (
+                            <Link href="/calendar" className="hover:text-[#003399]">Minhas Reservas</Link>
+                        )}
                         <Link href="#" className="text-[#003399]">Nossos Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399]">Meu Perfil</Link>
                     </nav>
@@ -167,7 +180,7 @@ function OurSpacesPage() {
                     <div className="w-full relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#EAE6F5] to-[#FDFBF7] p-10 md:p-14 shadow-sm border border-white mb-10 flex items-center justify-between">
                         <div className="max-w-2xl relative z-10">
                             <div className="inline-flex items-center px-4 py-1.5 bg-white/60 backdrop-blur-sm text-[#6C5B7B] rounded-full text-xs font-bold mb-6 tracking-wide shadow-sm">
-                                ✨ Trabalhe com mais leveza
+                                {hasRole('ROLE_ADMIN') ? '⚙️ Visão de Auditoria' : '✨ Trabalhe com mais leveza'}
                             </div>
                             <h2 className="text-4xl md:text-5xl font-extrabold text-[#355C7D] mb-5 leading-tight">
                                 Mais produtividade, <br/>
@@ -176,11 +189,21 @@ function OurSpacesPage() {
                             <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-xl">
                                 Ambientes humanizados e colaborativos pensados para aprimorar seu bem-estar no dia a dia. Estrutura pronta para você atender desde o primeiro momento.
                             </p>
-                            <Button className="bg-[#C06C84] hover:bg-[#a85a70] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#C06C84]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
-                                <Link href="/calendar">
-                                    Quero reservar agora <ArrowRight className="w-5 h-5 ml-2" />
-                                </Link>
-                            </Button>
+                            
+                            {/* Renderização Condicional no Banner */}
+                            {hasRole('ROLE_ADMIN') ? (
+                                <Button className="bg-[#355C7D] hover:bg-[#2a4b66] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#355C7D]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
+                                    <Link href="/registered-spaces">
+                                        Gerenciar no Painel <Settings className="w-5 h-5 ml-2" />
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <Button className="bg-[#C06C84] hover:bg-[#a85a70] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#C06C84]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
+                                    <Link href="/calendar">
+                                        Quero reservar agora <ArrowRight className="w-5 h-5 ml-2" />
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                         <div className="hidden lg:block absolute right-10 top-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-to-br from-white/40 to-white/10 rounded-full blur-2xl pointer-events-none"></div>
                     </div>
@@ -207,7 +230,9 @@ function OurSpacesPage() {
                     <div className="mb-6 flex items-end justify-between">
                         <div>
                             <h3 className="text-2xl font-bold text-slate-800">Nossos Ambientes</h3>
-                            <p className="text-slate-500 mt-1 text-sm">Salas mobiliadas, climatizadas e prontas para uso.</p>
+                            <p className="text-slate-500 mt-1 text-sm">
+                                {hasRole('ROLE_ADMIN') ? 'Catálogo visível para os utilizadores finais.' : 'Salas mobiliadas, climatizadas e prontas para uso.'}
+                            </p>
                         </div>
                     </div>
 
@@ -249,7 +274,6 @@ function OurSpacesPage() {
                                     </div>
                                     
                                     {/* 2. CONTEÚDO ALINHADO COM A IMAGEM */}
-                                    {/* px-1 garante que o texto fique na mesma linha vertical da imagem */}
                                     <CardContent className="px-1 pt-4 pb-0 flex-1 flex flex-col">
                                         <h3 className="text-[22px] font-bold text-[#001738] mb-1.5 group-hover:text-[#003399] transition-colors">
                                             {space.name}
@@ -269,13 +293,21 @@ function OurSpacesPage() {
                                         </div>
                                     </CardContent>
                                     
-                                    {/* 3. BOTÃO SÓLIDO AZUL */}
+                                    {/* 3. BOTÃO SÓLIDO (Condicional) */}
                                     <div className="px-1 pb-1 pt-0 mt-auto">
-                                        <Button className="w-full rounded-[14px] bg-[#003399] hover:bg-[#002266] text-white transition-colors font-medium py-6 shadow-md text-[15px]" asChild>
-                                            <Link href={`/calendar?venue=${space.id}`}>
-                                                Saber Mais
-                                            </Link>
-                                        </Button>
+                                        {hasRole('ROLE_ADMIN') ? (
+                                            <Button className="w-full rounded-[14px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors font-bold py-6 shadow-sm text-[14px]" asChild>
+                                                <Link href={`/registered-spaces`}>
+                                                    Editar Espaço no Painel
+                                                </Link>
+                                            </Button>
+                                        ) : (
+                                            <Button className="w-full rounded-[14px] bg-[#003399] hover:bg-[#002266] text-white transition-colors font-medium py-6 shadow-md text-[15px]" asChild>
+                                                <Link href={`/calendar?venue=${space.id}`}>
+                                                    Saber Mais
+                                                </Link>
+                                            </Button>
+                                        )}
                                     </div>
                                 </Card>
                             ))
