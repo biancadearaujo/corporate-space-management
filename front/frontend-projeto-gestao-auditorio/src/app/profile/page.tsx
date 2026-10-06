@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
     MapPin, Edit2, Save, X, Mail, Phone, Building2, Briefcase, 
     ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, 
-    AlertTriangle, Search, Bell, Menu, User, Clock, CheckCircle2, XCircle, Info
+    AlertTriangle, Search, Bell, Menu, User, Clock, CheckCircle2, XCircle, Info, Image as ImageIcon // <-- Importar ImageIcon
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
@@ -190,7 +190,7 @@ function ProfilePage() {
                             role: translateRole(data.role || ''),
                             company: empresa, 
                             department: data.department || '',
-                            avatar: data.avatarUrl || data.photoUrl || ''
+                            avatar: data.avatarUrl || data.photoUrl || '' // <-- avatar preenchido
                         });
                     }
                 } catch (e) {
@@ -263,10 +263,11 @@ function ProfilePage() {
             const response = await fetch(`${getApiPrefix()}/user/me`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                // Garanta que envia "name" e "phoneNumber" para bater certo com o seu DTO!
+                // <-- Enviar avatar (photoUrl) no payload
                 body: JSON.stringify({ 
                     name: formData.name, 
-                    phoneNumber: formData.phone 
+                    phoneNumber: formData.phone,
+                    photoUrl: formData.avatar 
                 })
             });
 
@@ -355,7 +356,6 @@ function ProfilePage() {
     };
 
     const handleExitCompany = () => {
-        // Usa o nosso novo Confirm Personalizado em vez do window.confirm
         showConfirm(
             "Atenção: Ação Irreversível",
             "Ao sair da empresa, a sua conta atual e todos os dados vinculados serão EXCLUÍDOS permanentemente. Deseja mesmo continuar?",
@@ -369,7 +369,7 @@ function ProfilePage() {
                     
                     if (response.ok || response.status === 204) {
                         showAlert("Conta Encerrada", "Você saiu da empresa e a sua conta foi encerrada.", "success");
-                        setTimeout(() => handleLogout(), 2500); // Aguarda 2.5s para a pessoa ler a mensagem antes de dar logout
+                        setTimeout(() => handleLogout(), 2500); 
                     } else {
                         const msg = await response.text();
                         showAlert("Erro ao Sair", msg, "error");
@@ -468,10 +468,12 @@ function ProfilePage() {
                 <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
                     
                     {/* --- HEADER DO PERFIL --- */}
+                    {/* Alinhamento ao centro (items-center) para que o Avatar fique perfeitamente alinhado com os cartões mais curtos */}
                     <div className={`grid gap-6 lg:gap-8 mb-6 mt-4 lg:mt-8 items-center ${hasRole('ROLE_ADMIN') ? 'grid-cols-1 justify-items-center' : 'grid-cols-1 md:grid-cols-3'}`}>
-
-                        {/* 1. Avatar e Nome (Visível para todos) */}
+                        
+                        {/* 1. Avatar e Nome */}
                         <div className="flex flex-col items-center justify-center">
+                            {/* A div precisa ter 'relative' e 'overflow-hidden' para o next/image funcionar com 'fill' */}
                             <div className="relative w-28 h-28 rounded-full bg-[#003399] text-white flex items-center justify-center text-5xl font-bold mb-4 shadow-sm overflow-hidden">
                                 {isFetching ? (
                                     '...'
@@ -541,7 +543,27 @@ function ProfilePage() {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                                {/* Substituição das cores #0b4cdb pela cor oficial #003399 em todos os inputs */}
+                                {/* --- NOVO CAMPO: URL DA FOTO --- */}
+                                {/* Este campo só aparece quando o utilizador está a editar */}
+                                {isEditing && (
+                                    <div className="col-span-1 md:col-span-2 space-y-2 mb-2 animate-in fade-in">
+                                        <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1 flex items-center gap-1.5">
+                                            <ImageIcon size={14} /> Foto de Perfil (URL)
+                                        </label>
+                                        <div className="flex items-center px-4 py-3.5 rounded-xl border border-[#003399] bg-white ring-2 ring-[#003399]/10 transition-all">
+                                            <input 
+                                                type="url" 
+                                                name="avatar" 
+                                                value={formData.avatar} 
+                                                onChange={handleInputChange} 
+                                                placeholder="https://exemplo.com/minha-foto.jpg" 
+                                                className="bg-transparent outline-none w-full text-sm text-slate-800 font-medium" 
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 ml-1 mt-1">Cole o link (URL) da sua imagem. Formatos suportados: JPG, PNG.</p>
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1">Nome Completo</label>
                                     <div className={`flex items-center px-4 py-3.5 rounded-xl border transition-all ${isEditing ? 'border-[#003399] bg-white ring-2 ring-[#003399]/10' : 'border-slate-300 bg-white'}`}>
@@ -614,7 +636,7 @@ function ProfilePage() {
                                 </div>
                             )}
                             
-                            {/* Card: Segurança (Visível para todos) */}
+                            {/* Card: Segurança */}
                             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between h-full">
                                 <div>
                                     <div className="flex items-center gap-3 mb-4">
@@ -633,10 +655,9 @@ function ProfilePage() {
                 </div>
             </main>
 
-            {/* --- MODAL EMPRESA (Corrigido para fazer Scroll se a tela for pequena) --- */}
+            {/* --- MODAL EMPRESA --- */}
             {isCompanyModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    {/* Adicionado max-h-[90vh] e overflow-y-auto para evitar que fique gigante */}
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto">
                         <button onClick={() => setIsCompanyModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         
@@ -680,7 +701,6 @@ function ProfilePage() {
             {/* --- MODAL ALTERAR SENHA --- */}
             {isPasswordModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    {/* Removido o max-h-[90vh] e overflow-y-auto */}
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative">
                         <button onClick={() => setIsPasswordModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         
@@ -712,7 +732,7 @@ function ProfilePage() {
                 </div>
             )}
 
-            {/* --- COMPONENTE DE ALERTA PERSONALIZADO (Substitui window.alert e confirm) --- */}
+            {/* --- COMPONENTE DE ALERTA PERSONALIZADO --- */}
             {customAlert.isOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
