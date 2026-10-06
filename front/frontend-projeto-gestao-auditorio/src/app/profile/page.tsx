@@ -263,11 +263,11 @@ function ProfilePage() {
             const response = await fetch(`${getApiPrefix()}/user/me`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                // <-- Enviar avatar (photoUrl) no payload
+                // <-- CORREÇÃO: Enviamos "image" para bater certo com o DTO do Java
                 body: JSON.stringify({ 
                     name: formData.name, 
                     phoneNumber: formData.phone,
-                    photoUrl: formData.avatar 
+                    image: formData.avatar 
                 })
             });
 

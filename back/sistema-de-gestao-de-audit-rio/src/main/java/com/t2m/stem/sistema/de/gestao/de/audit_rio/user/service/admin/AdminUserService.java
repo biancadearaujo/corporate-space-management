@@ -159,6 +159,7 @@ public class AdminUserService {
 
         user.setUsername(dto.name());
         user.setPhoneNumber(dto.phoneNumber());
+        user.setPhotoUrl(dto.image());
 
         userRepository.save(user);
 

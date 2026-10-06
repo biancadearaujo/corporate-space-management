@@ -8,5 +8,9 @@ public record UserUpdateDTO(
         String name,
 
         @Pattern(regexp = "^\\(?(\\d{2})\\)?[\\s-]?(\\d{4,5})[\\s-]?(\\d{4})$", message = "Invalid phone number")
-        String phoneNumber) {
+        String phoneNumber,
+
+        String image
+
+) {
 }

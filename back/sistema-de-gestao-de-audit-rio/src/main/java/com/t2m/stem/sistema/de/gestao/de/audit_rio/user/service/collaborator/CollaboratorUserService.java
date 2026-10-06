@@ -37,6 +37,7 @@ public class CollaboratorUserService {
 
         user.setUsername(dto.name());
         user.setPhoneNumber(dto.phoneNumber());
+        user.setPhotoUrl(dto.image());
 
         userRepository.save(user);
 
