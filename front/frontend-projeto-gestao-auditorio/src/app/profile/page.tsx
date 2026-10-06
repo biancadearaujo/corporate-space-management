@@ -468,12 +468,10 @@ function ProfilePage() {
                 <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
                     
                     {/* --- HEADER DO PERFIL --- */}
-                    {/* Alinhamento ao centro (items-center) para que o Avatar fique perfeitamente alinhado com os cartões mais curtos */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-6 mt-4 lg:mt-8 items-center">
-                        
-                        {/* 1. Avatar e Nome */}
+                    <div className={`grid gap-6 lg:gap-8 mb-6 mt-4 lg:mt-8 items-center ${hasRole('ROLE_ADMIN') ? 'grid-cols-1 justify-items-center' : 'grid-cols-1 md:grid-cols-3'}`}>
+
+                        {/* 1. Avatar e Nome (Visível para todos) */}
                         <div className="flex flex-col items-center justify-center">
-                            {/* A div precisa ter 'relative' e 'overflow-hidden' para o next/image funcionar com 'fill' */}
                             <div className="relative w-28 h-28 rounded-full bg-[#003399] text-white flex items-center justify-center text-5xl font-bold mb-4 shadow-sm overflow-hidden">
                                 {isFetching ? (
                                     '...'
@@ -497,24 +495,27 @@ function ProfilePage() {
                             </p>
                         </div>
 
-                        {/* 2. Minhas Reservas (Card Azul - Estilo exato do Dashboard) */}
-                        <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-[#003399] text-white border-[#003399] w-full">
-                            <p className="text-sm font-medium mb-2 text-blue-100">Minhas Reservas</p>
-                            <h3 className="text-3xl font-bold">{stats.reservationsCount}</h3>
-                            <p className="text-xs mt-2 text-blue-200/80">Histórico total</p>
-                        </div>
+                        {/* 2 e 3. Minhas Reservas e Horas Totais (Ocultos para Administrador) */}
+                        {!hasRole('ROLE_ADMIN') && (
+                            <>
+                                <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-[#003399] text-white border-[#003399] w-full">
+                                    <p className="text-sm font-medium mb-2 text-blue-100">Minhas Reservas</p>
+                                    <h3 className="text-3xl font-bold">{stats.reservationsCount}</h3>
+                                    <p className="text-xs mt-2 text-blue-200/80">Histórico total</p>
+                                </div>
 
-                        {/* 3. Horas Totais (Card Branco - Estilo exato do Dashboard) */}
-                        <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-white text-slate-700 border-slate-100 w-full">
-                            <div className="flex items-center gap-2 text-sm font-medium mb-2 text-slate-500">
-                                <Clock size={16} className="text-[#003399]" />
-                                Horas Totais
-                            </div>
-                            <h3 className="text-3xl font-bold text-slate-800">
-                                {stats.approvedHours.toFixed(1).replace('.0', '')}h
-                            </h3>
-                            <p className="text-xs mt-2 text-slate-400">Acumulado</p>
-                        </div>
+                                <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-white text-slate-700 border-slate-100 w-full">
+                                    <div className="flex items-center gap-2 text-sm font-medium mb-2 text-slate-500">
+                                        <Clock size={16} className="text-[#003399]" />
+                                        Horas Totais
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-slate-800">
+                                        {stats.approvedHours.toFixed(1).replace('.0', '')}h
+                                    </h3>
+                                    <p className="text-xs mt-2 text-slate-400">Acumulado</p>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* --- FORMULÁRIO E CARDS LATERAIS --- */}
@@ -589,29 +590,31 @@ function ProfilePage() {
                         {/* --- CARDS LATERAIS --- */}
                         <div className="lg:col-span-1 flex flex-col gap-6 lg:gap-8">
                             
-                            {/* Card: Vínculo */}
-                            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-2 bg-blue-50 rounded-lg text-[#003399]"><Building size={20} /></div>
-                                        <h4 className="font-bold text-slate-800 text-lg">Vínculo Corporativo</h4>
-                                    </div>
-                                    <div className="mb-8 p-4 bg-[#F0F2F5] rounded-xl flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-500 shadow-sm shrink-0">
-                                            {formData.company ? formData.company.charAt(0) : 'E'}
+                            {/* Card: Vínculo (Oculto para Administrador) */}
+                            {!hasRole('ROLE_ADMIN') && (
+                                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="p-2 bg-blue-50 rounded-lg text-[#003399]"><Building size={20} /></div>
+                                            <h4 className="font-bold text-slate-800 text-lg">Vínculo Corporativo</h4>
                                         </div>
-                                        <div className="overflow-hidden">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Empresa Atual</p>
-                                            <p className="text-sm font-bold text-slate-800 uppercase mt-0.5 truncate">{formData.company}</p>
+                                        <div className="mb-8 p-4 bg-[#F0F2F5] rounded-xl flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-500 shadow-sm shrink-0">
+                                                {formData.company ? formData.company.charAt(0) : 'E'}
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Empresa Atual</p>
+                                                <p className="text-sm font-bold text-slate-800 uppercase mt-0.5 truncate">{formData.company}</p>
+                                            </div>
                                         </div>
                                     </div>
+                                    <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-[#003399] text-[#003399] rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm mt-auto">
+                                        <ArrowRightLeft size={16} /> Gerenciar Vínculo
+                                    </button>
                                 </div>
-                                <button onClick={() => setIsCompanyModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-[#003399] text-[#003399] rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm mt-auto">
-                                    <ArrowRightLeft size={16} /> Gerenciar Vínculo
-                                </button>
-                            </div>
+                            )}
                             
-                            {/* Card: Segurança */}
+                            {/* Card: Segurança (Visível para todos) */}
                             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between h-full">
                                 <div>
                                     <div className="flex items-center gap-3 mb-4">
