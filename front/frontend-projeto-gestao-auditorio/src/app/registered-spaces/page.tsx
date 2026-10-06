@@ -337,23 +337,31 @@ export default function SpaceRegistrationAndList() {
                 return;
             }
 
-            let accessibilityId = null;
-            if (hasAccessibility) {
-                 const accessResponse = await axios.post('http://localhost:8080/admin/accessibility', accessData, { headers: { Authorization: `Bearer ${authToken}` } });
-                 accessibilityId = accessResponse.data.accessibilityId;
-            }
+            // 1. CRIA A ACESSIBILIDADE SEMPRE (Para não enviar nulo para o Java)
+            const accessPayload = hasAccessibility ? accessData : {
+                accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
+                directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
+            };
             
+            // Faz o POST da acessibilidade garantindo que gera um ID
+            const accessResponse = await axios.post('http://localhost:8080/admin/accessibility', accessPayload, { 
+                headers: { Authorization: `Bearer ${authToken}` } 
+            });
+            const generatedAccessibilityId = accessResponse.data.accessibilityId;
+            
+            // 2. MONTA O PAYLOAD DO ESPAÇO
             const venuePayload = {
                 ...spaceData,
                 capacity: Number(spaceData.capacity),
                 size: Number(spaceData.size),
-                image: spaceData.image || 'default-image.jpg', // Garante que não falha no @NotNull
-                accessibilityId: accessibilityId,
+                image: spaceData.image || 'default-image.jpg', 
+                accessibilityId: generatedAccessibilityId, // Agora NUNCA vai vazio!
                 equipments: hasEquipment ? equipmentList : [],
                 divisible: spaceData.venueType === 'AUDITORIUM' ? isDivisible : false,
                 subVenues: (isDivisible && spaceData.venueType === 'AUDITORIUM') ? subVenuesList : []
             };
 
+            // 3. ENVIA PARA O BACKEND
             if (editingVenueId) {
                 await axios.put(`http://localhost:8080/admin/venue/${editingVenueId}`, venuePayload, { 
                     headers: { Authorization: `Bearer ${authToken}` } 
@@ -369,9 +377,11 @@ export default function SpaceRegistrationAndList() {
             cancelEditing();
             fetchVenues(currentPage, itemsPerPage);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert(`Erro ao ${editingVenueId ? 'atualizar' : 'cadastrar'} espaço. Verifique os campos.`);
+            // Mostra o erro exato que vem do Spring Boot para ajudar a debugar
+            const errorMessage = err.response?.data?.message || err.response?.data || "Verifique os dados informados.";
+            alert(`Erro do Servidor: \n${errorMessage}`);
         } finally {
             setSaving(false);
         }
