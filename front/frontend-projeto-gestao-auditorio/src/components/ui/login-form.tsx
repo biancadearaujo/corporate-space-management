@@ -69,7 +69,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
                         </Label>
                         <Input
                             id="email"
-                            placeholder="nome@empresa.com"
+                            placeholder="nome@email.com"
                             type="email"
                             autoCapitalize="none"
                             autoComplete="email"
@@ -101,7 +101,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
                         disabled={isSubmitting}
                         className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base shadow-md transition-all mt-2"
                     >
-                        {isSubmitting ? 'Autenticando...' : 'Sign In'}
+                        {isSubmitting ? 'Autenticando...' : 'Entrar'}
                     </Button>
                 </div>
             </form>
@@ -110,10 +110,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<'div'>) 
             <div className="flex flex-col items-center gap-4 mt-4 text-sm text-gray-500">
                 <div className="flex justify-between w-full">
                      <a href="/recovery" className="hover:text-blue-600 hover:underline">
-                        Forgot Password?
+                        Esqueci minha senha
                     </a>
                     <a href="/request-collaborator" className="hover:text-blue-600 hover:underline font-medium text-gray-700">
-                        Register new account
+                        Criar nova conta
                     </a>
                 </div>
             </div>

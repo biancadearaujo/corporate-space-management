@@ -63,7 +63,7 @@ export function RecoveryForm({ className, ...props }: RecoveryFormProps) {
                             </Button>
 
                             <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-                                <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#003399] transition-colors">
+                                <Link href="/login" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#003399] transition-colors">
                                     <ArrowLeft size={16} /> Voltar para o Login
                                 </Link>
                             </div>
