@@ -141,7 +141,7 @@ export default function RegisteredCompaniesPage() {
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
-        router.replace('/'); 
+        router.replace('/login'); 
     };
 
     const handleDashboardClick = () => {

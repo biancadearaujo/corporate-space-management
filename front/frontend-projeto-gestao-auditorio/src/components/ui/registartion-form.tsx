@@ -166,7 +166,7 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-xs font-bold text-[#003399] uppercase tracking-wider ml-1">E-mail corporativo</Label>
+                            <Label htmlFor="email" className="text-xs font-bold text-[#003399] uppercase tracking-wider ml-1">Email corporativo</Label>
                             <Input
                                 id="email"
                                 type="email"

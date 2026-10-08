@@ -419,7 +419,7 @@ export default function AppointmentCalendar() {
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
-        router.replace('/'); 
+        router.replace('/login'); 
     };
 
     // Visão MENSAL
@@ -610,7 +610,7 @@ export default function AppointmentCalendar() {
                 {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
                         <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>

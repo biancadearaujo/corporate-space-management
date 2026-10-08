@@ -130,7 +130,7 @@ function OurSpacesPage() {
 
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href={getDashboardLink()} className="hover:text-[#003399] transition-colors">Dashboard</Link>
+                        <Link href={getDashboardLink()} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
                         {/* Se for Administrador, pode ocultar o botão "Reservas" ou direcioná-lo para onde fizer sentido */}
                         {!hasRole('ROLE_ADMIN') && (
                             <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>

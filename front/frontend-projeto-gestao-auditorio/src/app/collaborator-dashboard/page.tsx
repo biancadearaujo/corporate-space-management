@@ -447,7 +447,7 @@ function CollaboratorDashboard() {
 
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
-                        <Link href="/collaborator-dashboard" className="text-[#003399] font-semibold transition-colors">Dashboard</Link>
+                        <Link href="/collaborator-dashboard" className="text-[#003399] font-semibold transition-colors">Painel Geral</Link>
                         <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
