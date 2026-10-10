@@ -1229,14 +1229,14 @@ INSERT INTO scheduling_register_request (
              '2025-11-10 14:00:00',
              '2025-11-10 16:00:00',
              '2025-11-01 10:00:00',
-             'fbdc1ac5-d795-44f3-a333-9564775e92fe', -- User: Laranja
-             'c94d1184-3b58-41b0-baa8-9df76de81138', -- Company: Laranja
-             'f5867870-52c3-4e78-885a-6618540a28a9', -- Venue: Sala de Reuniões
+             'fbdc1ac5-d795-44f3-a333-9564775e92fe',
+             'c94d1184-3b58-41b0-baa8-9df76de81138',
+             'f5867870-52c3-4e78-885a-6618540a28a9',
              NULL,
              'APPROVED',
              'fbdc1ac5-d795-44f3-a333-9564775e92fe',
              '2024-12-01 10:00:00',
-             NULL -- Null pois não é Auditório
+             NULL
          );
 
 INSERT INTO scheduling (
@@ -1274,9 +1274,9 @@ INSERT INTO scheduling_register_request (
              '2024-12-12 09:00:00',
              '2024-12-12 11:00:00',
              '2024-12-02 14:30:00',
-             '374aa3dc-d57c-4c68-ac59-ea7e8cbb1b7b', -- User: Oliveira
-             'c94d1184-3b58-41b0-baa8-9df76de81138', -- Company: Laranja
-             '8b0f54ee-3108-45d7-b082-29d16b990656', -- Venue: Coworking
+             '374aa3dc-d57c-4c68-ac59-ea7e8cbb1b7b',
+             'c94d1184-3b58-41b0-baa8-9df76de81138',
+             '8b0f54ee-3108-45d7-b082-29d16b990656',
              NULL,
              'PENDING',
              NULL,
@@ -1364,14 +1364,14 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
-             '1277c39f-fc78-4cbf-acc3-63a1f9f6d5fa', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-05-02 10:00:00', NULL
+             '1277c39f-fc78-4cbf-acc3-63a1f9f6d5fa', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', '4cba56de-af50-46ac-950a-87d916e43a24', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-05-02 10:00:00', NULL
          );
 
 INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             '33cd8e6b-982b-49ea-8bbc-2fc93b8e6c0a', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '1277c39f-fc78-4cbf-acc3-63a1f9f6d5fa', NULL
+             '33cd8e6b-982b-49ea-8bbc-2fc93b8e6c0a', 'Treinamento de Equipe', 'Treinamento interno', '2026-05-15 08:00:00', '2026-05-15 18:00:00', '2026-05-01 10:00:00', '4cba56de-af50-46ac-950a-87d916e43a24', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '1277c39f-fc78-4cbf-acc3-63a1f9f6d5fa', NULL
          );
 
 -- JUNHO DE 2026 (5 horas)
@@ -1379,14 +1379,14 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
-             '1188d44d-b07c-41ee-aa86-c6aec162a079', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-06-02 10:00:00', NULL
+             '1188d44d-b07c-41ee-aa86-c6aec162a079', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-06-02 10:00:00', NULL
          );
 
 INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             'cccccccc-cccc-cccc-cccc-cccccccccccc', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '1188d44d-b07c-41ee-aa86-c6aec162a079', NULL
+             'cccccccc-cccc-cccc-cccc-cccccccccccc', 'Reunião com Clientes', 'Apresentação de Produto', '2026-06-10 13:00:00', '2026-06-10 18:00:00', '2026-06-01 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '1188d44d-b07c-41ee-aa86-c6aec162a079', NULL
          );
 
 -- JULHO DE 2026 (12 horas)
@@ -1394,14 +1394,14 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
-             '34df289a-bb4e-40b3-bc90-bfbe3664200a', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-07-06 10:00:00', NULL
+             '34df289a-bb4e-40b3-bc90-bfbe3664200a', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-07-06 10:00:00', NULL
          );
 
 INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             'dddddddd-dddd-dddd-dddd-dddddddddddd', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '34df289a-bb4e-40b3-bc90-bfbe3664200a', NULL
+             'dddddddd-dddd-dddd-dddd-dddddddddddd', 'Workshop', 'Workshop de Design', '2026-07-20 08:00:00', '2026-07-20 20:00:00', '2026-07-05 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '34df289a-bb4e-40b3-bc90-bfbe3664200a', NULL
          );
 
 -- AGOSTO DE 2026 (8 horas)
@@ -1409,14 +1409,14 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
-             '55555555-5555-5555-5555-555555555555', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-08-02 10:00:00', NULL
+             '55555555-5555-5555-5555-555555555555', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-08-02 10:00:00', NULL
          );
 
 INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '55555555-5555-5555-5555-555555555555', NULL
+             'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Planejamento Q3', 'Reunião de diretoria', '2026-08-05 09:00:00', '2026-08-05 17:00:00', '2026-08-01 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '55555555-5555-5555-5555-555555555555', NULL
          );
 
 -- SETEMBRO DE 2026 (15 horas)
@@ -1424,56 +1424,58 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
-             '66666666-6666-6666-6666-666666666666', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-09-02 10:00:00', NULL
+             '66666666-6666-6666-6666-666666666666', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', '4cba56de-af50-46ac-950a-87d916e43a24', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-09-02 10:00:00', NULL
          );
 
 INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', 'c94d1184-3b58-41b0-baa8-9df76de81138', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '66666666-6666-6666-6666-666666666666', NULL
+             'ffffffff-ffff-ffff-ffff-ffffffffffff', 'Evento Corporativo', 'Festa da Empresa', '2026-09-15 08:00:00', '2026-09-15 23:00:00', '2026-09-01 10:00:00', '4cba56de-af50-46ac-950a-87d916e43a24', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, '66666666-6666-6666-6666-666666666666', NULL
          );
 
 
 
 -- SOLICITAÇÃO DE AGENDAMENTO P/ GERENTE
+-- created_at tem que ser no máximo 72 horas antes da data atual. start_at tem que ser no mínimo 96 horas no futuro.
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             '77777777-7777-7777-7777-777777777777', 'Conferência Anual', 'Conferência', '2026-10-20 08:00:00', '2026-10-20 12:00:00', '2026-10-07 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             '77777777-7777-7777-7777-777777777777',
+                 'Conferência Anual', 'Conferência', '2026-10-20 08:00:00', '2026-10-20 12:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             '81e5b0a1-8591-4999-b480-a128e460599d', 'Evento Corporativo', 'Conferência', '2026-10-21 09:00:00', '2026-10-21 10:00:00', '2026-10-07 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             '81e5b0a1-8591-4999-b480-a128e460599d', 'Evento Corporativo', 'Conferência', '2026-10-21 09:00:00', '2026-10-21 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             'df0abcb1-1ead-46b3-9ae9-e30e4e304624', 'Alinhamento Semanal', 'Sincronizar tarefas da equipe', '2026-10-30 09:00:00', '2026-10-30 10:00:00', '2026-10-07 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             'df0abcb1-1ead-46b3-9ae9-e30e4e304624', 'Alinhamento Semanal', 'Sincronizar tarefas da equipe', '2026-10-30 09:00:00', '2026-10-30 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             '035f4b24-7b20-4c04-a40b-5878eacc8bf4', 'Alinhamento Técnico', 'Reunião', '2026-10-19 09:00:00', '2026-10-19 10:00:00', '2026-10-07 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             '035f4b24-7b20-4c04-a40b-5878eacc8bf4', 'Alinhamento Técnico', 'Reunião', '2026-10-19 09:00:00', '2026-10-19 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             'e0db37ed-ea89-4898-b90c-c9e4336956be', 'Refinamento de Tarefas', 'Reunião', '2026-10-20 09:00:00', '2026-10-20 10:00:00', '2026-10-07 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             'e0db37ed-ea89-4898-b90c-c9e4336956be', 'Refinamento de Tarefas', 'Reunião', '2026-10-20 09:00:00', '2026-10-20 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 
--- POPULAR O GRÁFICO DE BARRAS (Histórico)
+-- POPULAR O GRÁFICO DE BARRAS (Histórico) -- Fluxo de Uso - Manager
 INSERT INTO monthly_usage_company_hours (monthly_usage_company_hours_id, usage_month, used_hours, venue_type, company_id, updated_at)
 VALUES
     -- JANEIRO DE 2026
@@ -1538,6 +1540,36 @@ INSERT INTO additional_hours_request (
              false
          );
 
+INSERT INTO additional_hours_request (
+    additional_hours_request_id, company_id, requester_id, requested_hours, justification, status, created_at, updated_at,
+    is_approved
+) VALUES (
+             'b1b47d62-c2e6-43aa-a8d5-dd3131649b3b',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             '6d865d20-c8af-4195-91b9-43d4443e60b6',
+             5.0,
+             'Precisamos de horas extras para cumprir o prazo de entrega do novo projeto.',
+             'PENDING_MANAGER_REVIEW',
+             '2026-10-01 09:00:00',
+             NULL,
+             false
+         );
+
+INSERT INTO additional_hours_request (
+    additional_hours_request_id, company_id, requester_id, requested_hours, justification, status, created_at, updated_at,
+    is_approved
+) VALUES (
+             '83dda4bd-e91a-4591-b54c-ad1a469d5a10',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             '6d865d20-c8af-4195-91b9-43d4443e60b6',
+             5.0,
+             'Devido ao aumento inesperado no volume de pedidos, precisaremos programar horas extras.',
+             'PENDING_MANAGER_REVIEW',
+             '2026-10-01 09:00:00',
+             NULL,
+             false
+         );
+
 -- 2. Exemplo de solicitação APROVADA pelo Gerente
 INSERT INTO additional_hours_request (
     additional_hours_request_id, company_id, requester_id, requested_hours, justification, status,created_at, updated_at,
@@ -1552,4 +1584,88 @@ INSERT INTO additional_hours_request (
              '2026-10-02 14:00:00',
              '2026-10-03 10:30:00',
              false
+         );
+
+INSERT INTO additional_hours_request (
+    additional_hours_request_id, company_id, requester_id, requested_hours, justification, status,created_at, updated_at,
+    is_approved
+) VALUES (
+             'e07a42ff-edd7-4eeb-9a85-90c95ebfb145',
+             'c94d1184-3b58-41b0-baa8-9df76de81138',
+             '374aa3dc-d57c-4c68-ac59-ea7e8cbb1b7b',
+             5.5,
+             'Estamos com uma demanda muito alta no setor, por isso vamos precisar de um esforço extra de tempo nos próximos dias.',
+             'PENDING_ADMIN_REVIEW',
+             '2026-10-02 14:00:00',
+             '2026-10-03 10:30:00',
+             false
+         );
+
+INSERT INTO additional_hours_request (
+    additional_hours_request_id, company_id, requester_id, requested_hours, justification, status,created_at, updated_at,
+    is_approved
+) VALUES (
+             '1b3c1955-93a4-4a20-a4a8-b4b823964a54',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             '6d865d20-c8af-4195-91b9-43d4443e60b6',
+             5.5,
+             'Estamos com uma demanda muito alta no setor, por isso vamos precisar de um esforço extra de tempo nos próximos dias.',
+             'PENDING_ADMIN_REVIEW',
+             '2026-10-02 14:00:00',
+             '2026-10-03 10:30:00',
+             false
+         );
+
+INSERT INTO additional_hours_request (
+    additional_hours_request_id, company_id, requester_id, requested_hours, justification, status,created_at, updated_at,
+    is_approved
+) VALUES (
+             '615797f0-9b20-48dd-8b97-ce71b006f530',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             '6d865d20-c8af-4195-91b9-43d4443e60b6',
+             5.5,
+             'Precisamos de horas extras hoje para solucionar a falha técnica no nosso sistema principal.',
+             'PENDING_ADMIN_REVIEW',
+             '2026-10-02 14:00:00',
+             '2026-10-03 10:30:00',
+             false
+         );
+
+--SOLICITAÇÃO DE REGISTRO DE USUÁRIO (PENDENTE)
+INSERT INTO users_registration_request (
+    id, username, email, password, cpf, photo_url, phone_number, rg_number, company_id, status, decided_by, decided_at,
+    rejection_reason
+) VALUES (
+             'e1c12345-1234-4000-8000-000000000001',
+             'Galileu',
+             'galileu@krypton.com',
+             '$2a$10$GiseHkdvwOFr7A9KRWbeiOmg/PYPhWVjdm42puLfOzR/gIAQrsAGy',
+             '65900941019',
+             'https://picsum.photos/200/300',
+             '24990099111',
+             '266608383',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             'PENDING',
+             NULL,
+             NULL,
+             NULL
+         );
+
+INSERT INTO users_registration_request (
+    id, username, email, password, cpf, photo_url, phone_number, rg_number, company_id, status, decided_by, decided_at,
+    rejection_reason
+) VALUES (
+             '90004072-8f3d-4bd9-b884-086f67b2e156',
+             'Astra',
+             'astra@krypton.com',
+             '$2a$10$GiseHkdvwOFr7A9KRWbeiOmg/PYPhWVjdm42puLfOzR/gIAQrsAGy',
+             '17741413023',
+             'https://picsum.photos/200/300',
+             '24990099111',
+             '460642996',
+             'db72b375-bd1b-4257-91ca-040fdd807f55',
+             'PENDING',
+             NULL,
+             NULL,
+             NULL
          );
