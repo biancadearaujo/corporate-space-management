@@ -20,9 +20,11 @@ interface Company {
 
 interface Manager {
     id: string;           
-    name: string;         
+    username?: string;    // Alinhado com o DER do TCC
+    name?: string;        // Fallback caso o backend envie name
     email: string;        
     phone: string;        
+    phoneNumber?: string; // Fallback do backend
     role: string;         
     department: string;   
     companyName: string;  
@@ -76,6 +78,9 @@ export default function RegisterManagerPage() {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [managers, setManagers] = useState<Manager[]>([]); 
     
+    // Filtro de Busca (CORRIGIDO)
+    const [searchTerm, setSearchTerm] = useState('');
+
     // Estado para Modal de Vínculo
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [linkData, setLinkData] = useState({ email: '', companyId: '' });
@@ -90,14 +95,14 @@ export default function RegisterManagerPage() {
         username: '', email: '', password: '', cpf: '', phoneNumber: '', rgNumber: '', companyId: '',
     });
 
-    // --- FETCH DATA (CORRIGIDO: BLINDADO CONTRA FALHAS ISOLADAS) ---
+    // --- FETCH DATA ---
     const fetchData = async () => {
         const authToken = token || localStorage.getItem('token');
         if (!authToken) return;
         
         const config = { headers: { Authorization: `Bearer ${authToken}` } };
 
-        // 1. Busca Perfil (Se falhar, não quebra o resto)
+        // 1. Busca Perfil
         try {
             const userRes = await axios.get('http://localhost:8080/admin/user/me', config);
             if (userRes.data && (userRes.data.name || userRes.data.username)) {
@@ -107,7 +112,7 @@ export default function RegisterManagerPage() {
             console.error('Aviso: Erro ao buscar perfil:', error);
         }
 
-        // 2. Busca Empresas (Se falhar, não quebra os gestores)
+        // 2. Busca Empresas
         try {
             const companiesRes = await axios.get('http://localhost:8080/admin/company', config);
             if (companiesRes.data && Array.isArray(companiesRes.data.content)) {
@@ -130,11 +135,21 @@ export default function RegisterManagerPage() {
 
     useEffect(() => { fetchData(); }, [token]);
 
-    // --- LÓGICA DE PAGINAÇÃO ---
+    // --- LÓGICA DE FILTRO E PAGINAÇÃO (CORRIGIDA) ---
+    const filteredManagers = managers.filter(mgr => {
+        const nameToSearch = (mgr.username || mgr.name || '').toLowerCase();
+        const emailToSearch = (mgr.email || '').toLowerCase();
+        const search = searchTerm.toLowerCase();
+        return nameToSearch.includes(search) || emailToSearch.includes(search);
+    });
+
     const startIndex = managerPage * managersPerPage;
     const endIndex = startIndex + managersPerPage;
-    const visibleManagers = managers.slice(startIndex, endIndex);
-    const totalPages = Math.ceil(managers.length / managersPerPage);
+    const visibleManagers = filteredManagers.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(filteredManagers.length / managersPerPage);
+
+    // Reseta a página para 0 ao digitar na busca
+    useEffect(() => { setManagerPage(0); }, [searchTerm]);
 
     // --- HANDLERS NAVBAR ---
     const handleLogout = () => {
@@ -297,7 +312,7 @@ export default function RegisterManagerPage() {
                 </div>
             )}
 
-            {/* --- ÁREA PRINCIPAL (Sem Sidebar) --- */}
+            {/* --- ÁREA PRINCIPAL --- */}
             <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
                 <header className="mb-8">
                     <h2 className="text-2xl font-bold text-slate-800">Gerenciamento de Gestores</h2>
@@ -376,7 +391,13 @@ export default function RegisterManagerPage() {
                             <h3 className="text-xl font-bold text-slate-800">Lista de Gestores</h3>
                             <div className="relative hidden sm:block">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input type="text" placeholder="Buscar na tabela..." className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#003399]/20 w-64 transition-all" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Buscar por nome ou email..." 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#003399]/20 w-64 transition-all" 
+                                />
                             </div>
                         </div>
                         
@@ -392,19 +413,22 @@ export default function RegisterManagerPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {managers.length === 0 ? (
-                                        <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-medium">Nenhum gestor cadastrado ainda.</td></tr>
+                                    {filteredManagers.length === 0 ? (
+                                        <tr><td colSpan={5} className="text-center py-12 text-slate-400 font-medium">Nenhum gestor encontrado.</td></tr>
                                     ) : (
-                                        visibleManagers.map((mgr, index) => (
+                                        visibleManagers.map((mgr, index) => {
+                                            const managerName = mgr.username || mgr.name || 'Sem Nome';
+                                            const managerPhone = mgr.phone || mgr.phoneNumber; // Fallback duplo de segurança
+                                            
+                                            return (
                                             <tr key={mgr.id || index} className="hover:bg-slate-50 transition-colors group">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-[#003399] flex items-center justify-center font-bold text-sm shrink-0">
-                                                            {(mgr.name || '?').charAt(0).toUpperCase()}
+                                                            {managerName.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <p className="text-slate-800 font-bold text-sm">{mgr.name || 'Sem Nome'}</p>
-                                                            <p className="text-slate-400 text-[10px] uppercase font-mono tracking-widest mt-0.5">ID: {(mgr.id || '').slice(0,8)}</p>
+                                                            <p className="text-slate-800 font-bold text-sm">{managerName}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -419,7 +443,7 @@ export default function RegisterManagerPage() {
                                                 <td className="px-6 py-4 text-sm text-slate-600">
                                                     <div className="flex flex-col">
                                                         <span className="font-medium text-slate-700">{mgr.email}</span>
-                                                        {mgr.phone && <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5"><Phone size={10}/>{mgr.phone}</div>}
+                                                        {managerPhone && <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5"><Phone size={10}/>{managerPhone}</div>}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
@@ -435,7 +459,7 @@ export default function RegisterManagerPage() {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))
+                                        )})
                                     )}
                                 </tbody>
                             </table>
