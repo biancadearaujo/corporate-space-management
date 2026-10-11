@@ -35,14 +35,10 @@ import {
 // --- HELPER DE DATA ---
 function parseApiDate(dateString: string | null | undefined): Date {
     if (!dateString) return new Date(NaN);
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-        return new Date(dateString + (dateString.includes('Z') ? '' : 'Z'));
-    }
-    if (!dateString.endsWith('Z') && dateString.includes('T')) {
-         return new Date(dateString + 'Z');
-    }
-    return date;
+    
+    const normalizedString = dateString.replace(' ', 'T');
+    
+    return new Date(normalizedString);
 }
 
 // --- INTERFACES DTO ---
@@ -557,17 +553,27 @@ function CollaboratorDashboard() {
                                     return (
                                         <div key={res.id} className="flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl border border-slate-100 hover:shadow-md transition-shadow bg-white gap-4">
                                             <div className="flex items-center gap-5">
+                                                {/* Ícone do calendário */}
                                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-[#003399] ${['CONFIRMED', 'APPROVED'].includes(res.status) ? 'bg-indigo-50' : 'bg-slate-50 text-slate-400'}`}>
                                                     <CalendarDays size={24} />
                                                 </div>
+                                                
+                                                {/* TEXTO REORGANIZADO COM NEGRITO SEPARADO */}
                                                 <div>
-                                                    <h4 className="font-bold text-slate-800 text-base">{res.venueName}</h4>
-                                                    <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                                        <span className="bg-slate-50 border border-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">{formatReservationDate(res.startAt)}</span>
-                                                        <span>•</span>
-                                                        <span>{formatTime(res.startAt)} - {formatTime(res.endAt)}</span>
+                                                    <h4 className="text-slate-800 text-base">
+                                                        {res.name ? (
+                                                            <>
+                                                                <span className="font-bold">{res.name}</span>
+                                                                <span className="font-normal text-slate-600"> - {res.venueName}</span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="font-normal text-slate-600">{res.venueName}</span>
+                                                        )}
+                                                    </h4>
+                                                    <div className="flex items-center text-sm text-slate-500 mt-1 font-medium">
+                                                        <span>- {formatReservationDate(res.startAt)}</span>
+                                                        <span className="ml-1.5">{formatTime(res.startAt)} - {formatTime(res.endAt)}</span>
                                                     </div>
-                                                    {res.name && <p className="text-xs text-slate-400 mt-1.5 italic">"{res.name}"</p>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4 justify-between md:justify-end w-full md:w-auto">
