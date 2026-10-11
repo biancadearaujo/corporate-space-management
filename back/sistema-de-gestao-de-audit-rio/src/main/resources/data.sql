@@ -135,7 +135,7 @@ INSERT INTO company_hours_quota (
 VALUES (
            '12076b5c-31b7-4e12-98ff-035132014ee9',
            40,
-           6,
+           40,
            2,
            '164208db-090a-4e2a-98ff-4991813f3e50',
            20, 20, 20
@@ -148,7 +148,7 @@ INSERT INTO company_hours_quota (
 VALUES (
            'f74ba4a6-3a2d-44fb-8792-6acbcf9086da',
            40,
-           13,
+           40,
            2,
            'a1e299f1-41a7-40b2-bc45-464694bd0b31',
            20, 20, 20
@@ -1500,7 +1500,7 @@ INSERT INTO scheduling (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
 ) VALUES (
-             'de716ee7-514b-4ffe-989e-3800f089926a', 'Workshop', 'Workshop de Design', '2026-10-19 08:00:00', '2026-10-19 10:00:00', '2026-09-30 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'e40b9cb3-7102-4c7b-95aa-889658883bf4', NULL
+             'de716ee7-514b-4ffe-989e-3800f089926a', 'Workshop', 'Workshop de Design', '2026-10-19 08:00:00', '2026-10-19 09:00:00', '2026-09-30 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'e40b9cb3-7102-4c7b-95aa-889658883bf4', NULL
          );
 
 

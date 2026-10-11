@@ -9,6 +9,9 @@ public record CompanyQuotaResponseDTO(
         UUID companyId,
         double monthlyLimitHours,
         double additionalHoursApproved,
+        Double maxMonthlyHoursAuditorium,
+        Double maxMonthlyHoursMeetingRoom,
+        Double maxMonthlyHoursCoworking,
         LocalDateTime updatedAt
 ) {
     public static CompanyQuotaResponseDTO from(CompanyHoursQuota companyQuota) {
@@ -16,6 +19,9 @@ public record CompanyQuotaResponseDTO(
                 companyQuota.getCompanyHoursQuotaId(),
                 companyQuota.getMonthlyLimitHours(),
                 companyQuota.getAdditionalHoursApproved(),
+                companyQuota.getMaxMonthlyHoursAuditorium(),
+                companyQuota.getMaxMonthlyHoursMeetingRoom(),
+                companyQuota.getMaxMonthlyHoursCoworking(),
                 companyQuota.getUpdatedAt()
         );
     }

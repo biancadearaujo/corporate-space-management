@@ -10,7 +10,7 @@ import {
 import axios from 'axios';
 import Link from 'next/link';
 
-// --- INTERFACES ---
+// --- INTERFACES ALINHADAS COM O DER DO TCC (RN07 e RN08) ---
 interface CompanyQuota {
     companyId: string;
     name: string;
@@ -19,6 +19,9 @@ interface CompanyQuota {
     monthlyLimitHours: number;
     consumedHours: number;
     additionalHoursApproved: number;
+    maxMonthlyHoursAuditorium?: number;
+    maxMonthlyHoursMeetingRoom?: number;
+    maxMonthlyHoursCoworking?: number;
     createdAt?: string; 
 }
 
@@ -34,8 +37,28 @@ interface AdminStats {
     alertsList: AdminAlertItem[];
 }
 
-interface CompanyUpdatePayload { companyId: string; name: string; cnpj: string; email: string; }
-interface CreateCompanyPayload { name: string; email: string; cnpj: string; monthlyLimitHours: number; additionalHoursApproved: number; }
+interface CompanyUpdatePayload { 
+    companyId: string; 
+    name: string; 
+    cnpj: string; 
+    email: string; 
+    monthlyLimitHours: number;
+    maxMonthlyHoursAuditorium: number;
+    maxMonthlyHoursMeetingRoom: number;
+    maxMonthlyHoursCoworking: number;
+}
+
+interface CreateCompanyPayload { 
+    name: string; 
+    email: string; 
+    cnpj: string; 
+    monthlyLimitHours: number; 
+    maxMonthlyHoursAuditorium: number;
+    maxMonthlyHoursMeetingRoom: number;
+    maxMonthlyHoursCoworking: number;
+    additionalHoursApproved: number; 
+}
+
 interface CompanyResponse { content: CompanyQuota[]; number: number; totalPages: number; totalElements: number; }
 
 // --- COMPONENTES VISUAIS ---
@@ -86,7 +109,16 @@ export default function RegisteredCompaniesPage() {
     const [editableCompanyData, setEditableCompanyData] = useState<CompanyUpdatePayload | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [newCompanyData, setNewCompanyData] = useState<CreateCompanyPayload>({ name: '', email: '', cnpj: '', monthlyLimitHours: 0, additionalHoursApproved: 0 });
+    
+    // Novo estado de criação atualizado com as cotas específicas (RN08)
+    const [newCompanyData, setNewCompanyData] = useState<CreateCompanyPayload>({ 
+        name: '', email: '', cnpj: '', 
+        monthlyLimitHours: 20, // Padrão da RN07
+        maxMonthlyHoursAuditorium: 12, // Padrão da RN08
+        maxMonthlyHoursMeetingRoom: 12,
+        maxMonthlyHoursCoworking: 12,
+        additionalHoursApproved: 0 
+    });
 
     const [customAlert, setCustomAlert] = useState({ isOpen: false, title: '', message: '', type: 'success' as 'success' | 'error' | 'info' });
     const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -113,8 +145,33 @@ export default function RegisteredCompaniesPage() {
                 ? `http://localhost:8080/admin/company?page=${page}&size=${size}`
                 : `http://localhost:8080/admin/company/deleted?page=${page}&size=${size}`;
 
+            // 1. Busca os dados cadastrais das empresas (paginado)
             const response = await axios.get<CompanyResponse>(endpoint, { headers: { Authorization: `Bearer ${authToken}` } });
-            setCompanyQuotas(response.data.content);
+            
+            // 2. Busca o consumo dinâmico das cotas
+            let quotas = [];
+            try {
+                const quotaResponse = await axios.get('http://localhost:8080/admin/company-hours-quota/with-quota', { headers: { Authorization: `Bearer ${authToken}` } });
+                quotas = quotaResponse.data;
+            } catch (quotaErr) {
+                console.error("Erro ao buscar o consumo das cotas:", quotaErr);
+            }
+
+            // 3. Mescla os dados cadastrais com o consumo de horas (e agora também as subcotas)
+            const mergedCompanies = response.data.content.map(company => {
+                const companyQuota = quotas.find((q: any) => q.companyId === company.companyId);
+                return {
+                    ...company,
+                    monthlyLimitHours: companyQuota?.monthlyLimitHours ?? company.monthlyLimitHours ?? 0,
+                    consumedHours: companyQuota?.consumedHours ?? 0,
+                    additionalHoursApproved: companyQuota?.additionalHoursApproved ?? company.additionalHoursApproved ?? 0,
+                    maxMonthlyHoursAuditorium: companyQuota?.maxMonthlyHoursAuditorium ?? 12,
+                    maxMonthlyHoursMeetingRoom: companyQuota?.maxMonthlyHoursMeetingRoom ?? 12,
+                    maxMonthlyHoursCoworking: companyQuota?.maxMonthlyHoursCoworking ?? 12
+                };
+            });
+
+            setCompanyQuotas(mergedCompanies);
             setCurrentPage(response.data.number);
             setTotalServerPages(response.data.totalPages);
         } catch (err) {
@@ -165,7 +222,11 @@ export default function RegisteredCompaniesPage() {
             const authToken = localStorage.getItem('token');
             await axios.post('http://localhost:8080/admin/company', newCompanyData, { headers: { Authorization: `Bearer ${authToken}` } });
             showAlert('Sucesso', 'A empresa foi cadastrada com sucesso!', 'success');
-            setNewCompanyData({ name: '', email: '', cnpj: '', monthlyLimitHours: 0, additionalHoursApproved: 0 });
+            setNewCompanyData({ 
+                name: '', email: '', cnpj: '', 
+                monthlyLimitHours: 20, maxMonthlyHoursAuditorium: 12, maxMonthlyHoursMeetingRoom: 12, maxMonthlyHoursCoworking: 12, 
+                additionalHoursApproved: 0 
+            });
             setIsCreateModalOpen(false);
             fetchCompanyQuotas(currentPage);
             fetchStats();
@@ -176,8 +237,9 @@ export default function RegisteredCompaniesPage() {
         if (!editableCompanyData) return;
         try {
             const authToken = localStorage.getItem('token');
+            // Como agora enviamos a cota na edição, o backend precisa aceitar esse DTO modificado!
             await axios.put(`http://localhost:8080/admin/company/${editableCompanyData.companyId}`, editableCompanyData, { headers: { Authorization: `Bearer ${authToken}` } });
-            showAlert('Sucesso', 'Os dados da empresa foram atualizados!', 'success');
+            showAlert('Sucesso', 'Os dados e as cotas da empresa foram atualizados!', 'success');
             setIsEditing(false); 
             fetchCompanyQuotas(currentPage); 
             closeModal();
@@ -204,7 +266,16 @@ export default function RegisteredCompaniesPage() {
 
     const openModal = (company: CompanyQuota) => { 
         setSelectedCompanyQuota({ ...company }); 
-        setEditableCompanyData({ companyId: company.companyId, name: company.name, cnpj: company.cnpj, email: company.email }); 
+        setEditableCompanyData({ 
+            companyId: company.companyId, 
+            name: company.name, 
+            cnpj: company.cnpj, 
+            email: company.email,
+            monthlyLimitHours: company.monthlyLimitHours || 20,
+            maxMonthlyHoursAuditorium: company.maxMonthlyHoursAuditorium || 12,
+            maxMonthlyHoursMeetingRoom: company.maxMonthlyHoursMeetingRoom || 12,
+            maxMonthlyHoursCoworking: company.maxMonthlyHoursCoworking || 12
+        }); 
         setIsEditing(false); 
     };
     const closeModal = () => { setSelectedCompanyQuota(null); setEditableCompanyData(null); setIsEditing(false); };
@@ -213,7 +284,7 @@ export default function RegisteredCompaniesPage() {
     return (
         <div className="flex flex-col min-h-screen bg-[#FAFAFA] font-sans text-slate-800">
             
-            {/* --- TOP NAVBAR DA BRISA --- */}
+            {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
                 <div className="flex items-center gap-4 md:gap-6">
                     <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden">
@@ -269,14 +340,13 @@ export default function RegisteredCompaniesPage() {
                 {/* 1. RESUMO RÁPIDO */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <StatCard title="Empresas Ativas" value={adminStats.totalActiveCompanies} icon={Building2} type="default" />
-                    <StatCard title="Alertas de Cota" value={adminStats.alertsList.filter(a => a.type === 'orange').length || 0} icon={AlertTriangle} type="alert" />
+                    <StatCard title="Alertas de Cota" value={adminStats.totalAlerts} icon={AlertTriangle} type="alert" />
                     <StatCard title="Inativas / Lixeira" value={adminStats.alertsList.filter(a => a.type === 'blue').length || 0} icon={Trash2} type="inactive" />
                 </div>
 
-                {/* 2. TABELA DE EMPRESAS (O Foco) */}
+                {/* 2. TABELA DE EMPRESAS */}
                 <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden flex flex-col min-h-[500px]">
                     
-                    {/* Barra de Ações (Filtros e Cadastro) */}
                     <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="flex bg-[#F0F2F5] p-1 rounded-xl w-fit">
@@ -284,7 +354,6 @@ export default function RegisteredCompaniesPage() {
                                 <button onClick={() => setViewMode('deleted')} className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors ${viewMode === 'deleted' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Lixeira</button>
                             </div>
                             
-                            {/* Barra de Pesquisa */}
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                 <input 
@@ -304,7 +373,6 @@ export default function RegisteredCompaniesPage() {
                         )}
                     </div>
                     
-                    {/* Corpo da Tabela */}
                     <div className="overflow-x-auto flex-1">
                         <table className="w-full text-left text-sm text-slate-600">
                             <thead className="bg-[#F0F2F5]/50 text-[11px] uppercase tracking-wider font-bold text-slate-500">
@@ -328,7 +396,6 @@ export default function RegisteredCompaniesPage() {
 
                                     return (
                                         <tr key={company.companyId} className="hover:bg-slate-50 transition-colors group">
-                                            {/* Empresa */}
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${viewMode === 'deleted' ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 border border-indigo-100 text-[#003399]'}`}>
@@ -338,7 +405,6 @@ export default function RegisteredCompaniesPage() {
                                                 </div>
                                             </td>
                                             
-                                            {/* Contato */}
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-slate-700">{company.cnpj}</span>
@@ -346,7 +412,6 @@ export default function RegisteredCompaniesPage() {
                                                 </div>
                                             </td>
 
-                                            {/* Consumo Visual */}
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1 w-32">
                                                     <div className="flex justify-between text-[10px] font-bold text-slate-500">
@@ -362,7 +427,6 @@ export default function RegisteredCompaniesPage() {
                                                 </div>
                                             </td>
 
-                                            {/* Status Badge */}
                                             <td className="px-6 py-4">
                                                 {viewMode === 'active' ? (
                                                     <span className={`text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-md border ${isExcedido ? 'text-red-600 bg-red-50 border-red-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
@@ -375,7 +439,6 @@ export default function RegisteredCompaniesPage() {
                                                 )}
                                             </td>
 
-                                            {/* Ações */}
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {viewMode === 'active' ? (
@@ -397,7 +460,6 @@ export default function RegisteredCompaniesPage() {
                         </table>
                     </div>
                     
-                    {/* Paginação */}
                     <div className="p-4 flex items-center justify-end gap-4 border-t border-slate-100 bg-white">
                         <span className="text-sm font-medium text-slate-500">Página {currentPage + 1} de {totalServerPages}</span>
                         <div className="flex gap-2">
@@ -408,19 +470,31 @@ export default function RegisteredCompaniesPage() {
                 </div>
             </main>
 
-            {/* --- MODAL DE CRIAÇÃO --- */}
+            {/* --- MODAL DE CRIAÇÃO (AGORA COM LIMITES POR ESPAÇO) --- */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="bg-[#003399] px-6 py-4 rounded-t-[24px] flex justify-between items-center">
                             <h3 className="font-bold text-lg text-white">Cadastrar Nova Empresa</h3>
                             <button onClick={() => setIsCreateModalOpen(false)} className="text-blue-200 hover:text-white"><X size={20}/></button>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                             <div><label className="text-xs font-bold text-slate-500 block mb-1">Nome da Empresa</label><input value={newCompanyData.name} onChange={e => setNewCompanyData({...newCompanyData, name: e.target.value})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="Ex: Tech Solutions SA" /></div>
-                            <div><label className="text-xs font-bold text-slate-500 block mb-1">CNPJ</label><input value={newCompanyData.cnpj} onChange={e => setNewCompanyData({...newCompanyData, cnpj: e.target.value})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="Apenas números" /></div>
-                            <div><label className="text-xs font-bold text-slate-500 block mb-1">Email de Contato</label><input value={newCompanyData.email} onChange={e => setNewCompanyData({...newCompanyData, email: e.target.value})} type="email" className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="contato@empresa.com" /></div>
-                            <div><label className="text-xs font-bold text-slate-500 block mb-1">Cota de Horas (Mensal)</label><input type="number" value={newCompanyData.monthlyLimitHours} onChange={e => setNewCompanyData({...newCompanyData, monthlyLimitHours: Number(e.target.value)})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="Ex: 100" /></div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">CNPJ</label><input value={newCompanyData.cnpj} onChange={e => setNewCompanyData({...newCompanyData, cnpj: e.target.value})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="Apenas números" /></div>
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">Email de Contato</label><input value={newCompanyData.email} onChange={e => setNewCompanyData({...newCompanyData, email: e.target.value})} type="email" className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" placeholder="contato@empresa.com" /></div>
+                            </div>
+                            
+                            <div className="border-t border-slate-100 pt-4 mt-2">
+                                <h4 className="text-sm font-bold text-[#003399] mb-3">Gerenciamento de Cotas (Horas)</h4>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Cota Mensal Total (RN07)</label><input type="number" value={newCompanyData.monthlyLimitHours} onChange={e => setNewCompanyData({...newCompanyData, monthlyLimitHours: Number(e.target.value)})} className="w-full border border-[#003399]/30 bg-blue-50 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm font-bold text-[#003399]" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Auditórios (RN08)</label><input type="number" value={newCompanyData.maxMonthlyHoursAuditorium} onChange={e => setNewCompanyData({...newCompanyData, maxMonthlyHoursAuditorium: Number(e.target.value)})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Salas Reunião (RN08)</label><input type="number" value={newCompanyData.maxMonthlyHoursMeetingRoom} onChange={e => setNewCompanyData({...newCompanyData, maxMonthlyHoursMeetingRoom: Number(e.target.value)})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Coworking (RN08)</label><input type="number" value={newCompanyData.maxMonthlyHoursCoworking} onChange={e => setNewCompanyData({...newCompanyData, maxMonthlyHoursCoworking: Number(e.target.value)})} className="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm" /></div>
+                                </div>
+                            </div>
                         </div>
                         <div className="bg-slate-50 px-6 py-4 rounded-b-[24px] flex justify-end gap-3 border-t border-slate-100">
                             <button onClick={() => setIsCreateModalOpen(false)} className="px-5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
@@ -430,32 +504,62 @@ export default function RegisteredCompaniesPage() {
                 </div>
             )}
             
-            {/* --- MODAL DE EDIÇÃO (Agora Completo) --- */}
+            {/* --- MODAL DE EDIÇÃO (AGORA COM COTAS EDITÁVEIS) --- */}
             {selectedCompanyQuota && editableCompanyData && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="bg-slate-50 px-6 py-4 rounded-t-[24px] border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-bold text-lg text-slate-800">Detalhes da Empresa</h3>
                             <button onClick={closeModal} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                         </div>
-                        <div className="p-6 space-y-4">
+                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 block mb-1">Nome da Empresa</label>
                                 <input value={editableCompanyData.name} onChange={e => setEditableCompanyData({...editableCompanyData, name: e.target.value})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">CNPJ</label>
-                                <input value={editableCompanyData.cnpj} onChange={e => setEditableCompanyData({...editableCompanyData, cnpj: e.target.value})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 block mb-1">Email de Contato</label>
-                                <input value={editableCompanyData.email} onChange={e => setEditableCompanyData({...editableCompanyData, email: e.target.value})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1">CNPJ</label>
+                                    <input value={editableCompanyData.cnpj} onChange={e => setEditableCompanyData({...editableCompanyData, cnpj: e.target.value})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 block mb-1">Email de Contato</label>
+                                    <input value={editableCompanyData.email} onChange={e => setEditableCompanyData({...editableCompanyData, email: e.target.value})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                                </div>
                             </div>
                             
-                            {!isEditing && (
-                                <div className="bg-blue-50 rounded-xl p-4 mt-4 border border-blue-100 flex items-center justify-between">
+                            {/* SEÇÃO DE COTAS EDITÁVEIS */}
+                            <div className="border-t border-slate-100 pt-4 mt-2">
+                                <h4 className="text-sm font-bold text-[#003399] mb-3 flex items-center justify-between">
+                                    Gerenciamento de Cotas (Horas)
+                                    {!isEditing && <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-1 rounded">Somente leitura</span>}
+                                </h4>
+                                
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 block mb-1">Cota Mensal Total (RN07)</label>
+                                        <input type="number" value={editableCompanyData.monthlyLimitHours} onChange={e => setEditableCompanyData({...editableCompanyData, monthlyLimitHours: Number(e.target.value)})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm font-bold ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-blue-50 border-[#003399]/30 text-[#003399]'}`} />
+                                    </div>
                                     <div>
-                                        <p className="text-xs font-bold text-[#003399] uppercase tracking-wider mb-1">Consumo de Cotas</p>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Auditórios</label>
+                                        <input type="number" value={editableCompanyData.maxMonthlyHoursAuditorium} onChange={e => setEditableCompanyData({...editableCompanyData, maxMonthlyHoursAuditorium: Number(e.target.value)})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Salas Reunião</label>
+                                        <input type="number" value={editableCompanyData.maxMonthlyHoursMeetingRoom} onChange={e => setEditableCompanyData({...editableCompanyData, maxMonthlyHoursMeetingRoom: Number(e.target.value)})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase">Máx. Coworking</label>
+                                        <input type="number" value={editableCompanyData.maxMonthlyHoursCoworking} onChange={e => setEditableCompanyData({...editableCompanyData, maxMonthlyHoursCoworking: Number(e.target.value)})} disabled={!isEditing} className={`w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#003399]/20 text-sm ${!isEditing ? 'bg-slate-50 border-slate-100 text-slate-500' : 'bg-white border-slate-200'}`} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!isEditing && (
+                                <div className="bg-blue-50 rounded-xl p-4 mt-2 border border-blue-100 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold text-[#003399] uppercase tracking-wider mb-1">Consumo de Cotas Atual</p>
                                         <p className="text-sm text-slate-600 font-medium">{selectedCompanyQuota.consumedHours}h utilizadas de {selectedCompanyQuota.monthlyLimitHours}h</p>
                                     </div>
                                     <div className="w-12 h-12 rounded-full border-4 border-[#003399] flex items-center justify-center font-bold text-[#003399] text-xs">
@@ -472,7 +576,7 @@ export default function RegisteredCompaniesPage() {
                                 <button onClick={saveChanges} className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-6 py-2 rounded-xl shadow-sm transition-colors">Salvar Alterações</button>
                             ) : (
                                 <button onClick={() => setIsEditing(true)} className="bg-[#003399] hover:bg-[#002266] text-white text-sm font-bold px-6 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-                                    <Pencil size={16} /> Editar Dados
+                                    <Pencil size={16} /> Editar Dados e Cotas
                                 </button>
                             )}
                         </div>

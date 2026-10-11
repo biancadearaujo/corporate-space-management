@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -90,6 +91,11 @@ public class AdminCompanyService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new NotFoundException("Company not found"));
 
+        CompanyHoursQuota quota = companyHoursQuotaRepository.findByCompanyId(companyId)
+                .orElseThrow(() -> new NotFoundException("Company quota not found"));
+
+        LocalDateTime now = LocalDateTime.now();
+
         if (companyDTO.name() != null) {
             company.setName(companyDTO.name());
         }
@@ -100,6 +106,34 @@ public class AdminCompanyService {
 
         if (companyDTO.cnpj() != null) {
             company.setCnpj(companyDTO.cnpj());
+        }
+
+        if (companyDTO.monthlyLimitHours() != null){
+            quota.setMonthlyLimitHours(companyDTO.monthlyLimitHours());
+        }
+
+        if (companyDTO.maxMonthlyHoursAuditorium() != null){
+            quota.setMaxMonthlyHoursAuditorium(companyDTO.maxMonthlyHoursAuditorium());
+        }
+        if (companyDTO.maxMonthlyHoursMeetingRoom() != null){
+            quota.setMaxMonthlyHoursMeetingRoom(companyDTO.maxMonthlyHoursMeetingRoom());
+        }
+        if (companyDTO.maxMonthlyHoursCoworking() != null){
+            quota.setMaxMonthlyHoursCoworking(companyDTO.maxMonthlyHoursCoworking());
+        }
+
+        if (companyDTO.consumedHours() != null){
+            quota.setConsumedHours(companyDTO.consumedHours());
+        }
+
+        if (companyDTO.additionalHoursApproved() != null){
+            quota.setAdditionalHoursApproved(companyDTO.additionalHoursApproved());
+        }
+
+        if (companyDTO.monthlyLimitHours() != null || companyDTO.consumedHours() != null ||
+                companyDTO.additionalHoursApproved() != null || companyDTO.maxMonthlyHoursAuditorium() != null
+                || companyDTO.maxMonthlyHoursCoworking() != null || companyDTO.maxMonthlyHoursMeetingRoom() != null){
+            quota.setUpdatedAt(now);
         }
 
         Company updated = companyRepository.save(company);

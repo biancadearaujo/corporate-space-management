@@ -12,7 +12,10 @@ public record CompanyWithQuotaResponseDTO(
         String cnpj,
         double monthlyLimitHours,
         double consumedHours,
-        double additionalHoursApproved
+        double additionalHoursApproved,
+        Double maxMonthlyHoursAuditorium,
+        Double maxMonthlyHoursMeetingRoom,
+        Double maxMonthlyHoursCoworking
 
 ) {
     public static CompanyWithQuotaResponseDTO from(CompanyHoursQuota quota) {
@@ -25,7 +28,10 @@ public record CompanyWithQuotaResponseDTO(
                 company.getCnpj(),
                 quota.getMonthlyLimitHours(),
                 quota.getConsumedHours(),
-                quota.getAdditionalHoursApproved()
+                quota.getAdditionalHoursApproved(),
+                quota.getMaxMonthlyHoursAuditorium(),
+                quota.getMaxMonthlyHoursMeetingRoom(),
+                quota.getMaxMonthlyHoursCoworking()
         );
     }
 }

@@ -1,5 +1,6 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.company.service.admin;
 
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.CompanyHoursQuota;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.AdminAlertDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.AdminDashboardStatsDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.company.model.dto.MonthlyCreationDTO;
@@ -62,7 +63,18 @@ public class AdminDashboardService {
             ));
         }
 
-        long companiesNearLimit = companyHoursQuotaRepository.countCompaniesNearLimit();
+        // LÓGICA DE COTAS (RN07)
+        List<CompanyHoursQuota> allQuotas = companyHoursQuotaRepository.findAll();
+        long companiesNearLimit = allQuotas.stream().filter(quota -> {
+            // Soma a cota base com as horas extras aprovadas
+            double limit = quota.getMonthlyLimitHours() + quota.getAdditionalHoursApproved();
+            if (limit <= 0) return false; // Previne divisão por zero
+
+            // Calcula a percentagem de consumo
+            double percentage = (quota.getConsumedHours() / limit) * 100;
+            return percentage >= 75.0;
+        }).count();
+
         if (companiesNearLimit > 0) {
             alerts.add(new AdminAlertDTO(
                     companiesNearLimit + " empresas próximas do limite de horas",
@@ -77,8 +89,6 @@ public class AdminDashboardService {
                     "blue"
             ));
         }
-
-        long totalAlertsCount = alerts.size();
 
         List<MonthlyCreationDTO> monthlyHistory = new ArrayList<>();
         YearMonth currentYearMonthh = YearMonth.now();
@@ -103,7 +113,7 @@ public class AdminDashboardService {
                 totalHours,
                 activeReservations,
                 totalCompanies,
-                totalAlertsCount,
+                companiesNearLimit,
                 alerts,
                 monthlyHistory
         );
