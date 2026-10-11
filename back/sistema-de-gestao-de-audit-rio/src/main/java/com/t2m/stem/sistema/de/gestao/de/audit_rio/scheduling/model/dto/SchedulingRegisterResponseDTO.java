@@ -16,6 +16,7 @@ public record SchedulingRegisterResponseDTO(
         LocalDateTime createdAt,
         UUID createdBy,
         UUID companyId,
+        String venueName,
         UUID venueId,
 //        UUID equipmentsId,
         SchedulingRequestStatus status,
@@ -35,9 +36,8 @@ public record SchedulingRegisterResponseDTO(
                 schedulingRegisterRequest.getCreatedAt(),
                 schedulingRegisterRequest.getCreatedBy(),
                 schedulingRegisterRequest.getCompany().getCompanyId(),
+                schedulingRegisterRequest.getVenue().getName(),
                 schedulingRegisterRequest.getVenue().getVenueId(),
-//TODO: Voltar aqui.
-//                schedulingRegisterRequest.getgetEquipmentsId(),
                 schedulingRegisterRequest.getStatus(),
                 schedulingRegisterRequest.getDecidedBy(),
                 schedulingRegisterRequest.getDecidedAt(),

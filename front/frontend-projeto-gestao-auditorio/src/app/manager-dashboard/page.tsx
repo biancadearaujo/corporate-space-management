@@ -31,6 +31,8 @@ interface SchedulingRequestDTO {
     endAt: string;
     venueId: string;
     venueName?: string;
+    venue?: { name: string };
+    spaceName?: string;
     requesterName?: string;
     status: string;
 }
@@ -51,15 +53,23 @@ interface DashboardStats {
     monthlyHistory: { month: string; usedHours: number }[];
 }
 
-// --- HELPERS ---
+// --- HELPERS DE DATA ---
+function parseApiDate(dateString: string | null | undefined): Date {
+    if (!dateString) return new Date(NaN);
+    const normalizedString = dateString.replace(' ', 'T');
+    return new Date(normalizedString);
+}
+
 const formatDate = (dateString: string) => {
-    if (!dateString) return '--/--';
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    const date = parseApiDate(dateString);
+    if (isNaN(date.getTime())) return '--/--';
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const formatTime = (dateString: string) => {
-    if (!dateString) return '--:--';
-    return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const date = parseApiDate(dateString);
+    if (isNaN(date.getTime())) return '--:--';
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
 
 const StatCard = ({ title, value, subtext, active }: { title: string, value: string | number, subtext?: string, active?: boolean }) => (
@@ -88,6 +98,7 @@ function ManagerDashboard() {
     const [schedulingRequests, setSchedulingRequests] = useState<SchedulingRequestDTO[]>([]);
     const [userRequests, setUserRequests] = useState<UserRegistrationResponseDTO[]>([]);
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [venuesMap, setVenuesMap] = useState<Record<string, string>>({}); // NOVO: Mapeamento UUID -> Nome
 
     // Modais e Formulários
     const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
@@ -113,6 +124,26 @@ function ManagerDashboard() {
             const response = await fetch('http://localhost:8080/manager/user/me', { headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) { const data = await response.json(); if (data.name) setDbUserName(data.name); }
         } catch (error) { console.error(error); }
+    };
+
+    // NOVO: Função para buscar o nome dos espaços
+    const fetchVenues = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch('http://localhost:8080/venues', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (response.ok) {
+                const data = await response.json();
+                const vMap: Record<string, string> = {};
+                // Assumindo que a resposta paginada está em data.content
+                const venuesList = data.content || data;
+                if (Array.isArray(venuesList)) {
+                     venuesList.forEach((v: any) => {
+                         if (v.venueId && v.name) vMap[v.venueId] = v.name;
+                     });
+                }
+                setVenuesMap(vMap);
+            }
+        } catch (error) { console.error("Erro ao buscar espaços", error); }
     };
 
     const fetchAllData = useCallback(async (isBackgroundUpdate = false) => {
@@ -159,6 +190,7 @@ function ManagerDashboard() {
     useEffect(() => {
         if (!token) return;
         fetchUserProfile();
+        fetchVenues(); // Chama a função para popular o mapa de nomes
         fetchAllData(false); 
         const interval = setInterval(() => fetchAllData(true), 60000); 
         return () => clearInterval(interval);
@@ -450,24 +482,46 @@ function ManagerDashboard() {
                                     {/* AGENDAMENTOS */}
                                     {activeTab === 'bookings' && (
                                         schedulingRequests.length === 0 ? <p className="text-center text-slate-400 py-10 font-medium">Nenhum agendamento pendente.</p> :
-                                        schedulingRequests.map(req => (
+                                        schedulingRequests.map(req => {
+                                            // NOVO: Resolve o nome do espaço consultando o mapa
+                                            const resolvedVenueName = req.venueName || req.venue?.name || req.spaceName || venuesMap[req.venueId] || 'Espaço não informado';
+                                            return (
                                             <div key={req.schedulingId} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-white rounded-2xl border border-slate-100 hover:shadow-md transition-all gap-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#003399] flex items-center justify-center shrink-0"><MapPin size={24}/></div>
+                                                    
                                                     <div>
-                                                        <h4 className="font-bold text-slate-800 text-base">{req.name} <span className="text-sm font-medium text-slate-500 ml-1">em {req.venueName || 'Espaço'}</span></h4>
-                                                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                                            <span className="bg-slate-50 border border-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">{formatDate(req.startAt)}</span>
-                                                            <span>• {formatTime(req.startAt)} - {formatTime(req.endAt)}</span>
+                                                        <h4 className="text-slate-800 text-base">
+                                                            {req.name ? (
+                                                                <>
+                                                                    <span className="font-bold">{req.name}</span>
+                                                                    <span className="font-normal text-slate-600"> 
+                                                                        {' '}- {resolvedVenueName}
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-normal text-slate-600">
+                                                                    {resolvedVenueName}
+                                                                </span>
+                                                            )}
+                                                        </h4>
+                                                        <div className="flex items-center text-sm text-slate-500 mt-1 font-medium">
+                                                            <span>- {formatDate(req.startAt)}</span>
+                                                            <span className="ml-1.5">{formatTime(req.startAt)} - {formatTime(req.endAt)}</span>
                                                         </div>
+                                                        {req.requesterName && <p className="text-xs text-slate-400 mt-1.5 italic">Por: {req.requesterName}</p>}
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                                                    <button onClick={() => openReviewModal(req.schedulingId, false, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm"><X size={16}/> Rejeitar</button>
-                                                    <button onClick={() => openReviewModal(req.schedulingId, true, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-[#003399] text-white rounded-lg hover:bg-[#002266] transition-colors font-bold text-sm shadow-sm"><Check size={16}/> Aprovar</button>
+                                                    <button onClick={() => openReviewModal(req.schedulingId, false, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm">
+                                                        <X size={16}/> Rejeitar
+                                                    </button>
+                                                    <button onClick={() => openReviewModal(req.schedulingId, true, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-bold text-sm">
+                                                        <Check size={16}/> Aprovar
+                                                    </button>
                                                 </div>
                                             </div>
-                                        ))
+                                        )})
                                     )}
 
                                     {/* USUÁRIOS */}

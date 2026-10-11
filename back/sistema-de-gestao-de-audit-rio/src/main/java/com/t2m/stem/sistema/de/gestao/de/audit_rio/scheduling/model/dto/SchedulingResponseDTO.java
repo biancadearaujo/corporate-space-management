@@ -16,6 +16,7 @@ public record SchedulingResponseDTO(
         UUID createdBy,
         UUID companyId,
         UUID venueId,
+        String venueName,
         UUID equipmentsId,
         LocalDateTime updateAt,
         String cnpj
@@ -31,7 +32,7 @@ public record SchedulingResponseDTO(
                 scheduling.getCreatedBy(),
                 scheduling.getCompany().getCompanyId(),
                 scheduling.getVenue().getVenueId(),
-                //TODO: Testar aqui para ver se está retornando o ID correto do equipamento.
+                scheduling.getVenue().getName(),
                 scheduling.getEquipments() != null ?
                         scheduling.getEquipments().stream().findFirst().map(Equipment::getEquipmentId).orElse(null)
                         : null,
