@@ -472,8 +472,8 @@ function ManagerDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                                                    <button onClick={() => openReviewModal(req.additionalHoursRequestId, false, 'HOURS', req.requesterId)} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm"><X size={16}/> Rejeitar</button>
                                                     <button onClick={() => openReviewModal(req.additionalHoursRequestId, true, 'HOURS', req.requesterId)} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-bold text-sm"><Check size={16}/> Aprovar</button>
+                                                    <button onClick={() => openReviewModal(req.additionalHoursRequestId, false, 'HOURS', req.requesterId)} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm"><X size={16}/> Rejeitar</button>
                                                 </div>
                                             </div>
                                         ))
@@ -513,11 +513,11 @@ function ManagerDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                                                    <button onClick={() => openReviewModal(req.schedulingId, false, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm">
-                                                        <X size={16}/> Rejeitar
-                                                    </button>
                                                     <button onClick={() => openReviewModal(req.schedulingId, true, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-bold text-sm">
                                                         <Check size={16}/> Aprovar
+                                                    </button>
+                                                    <button onClick={() => openReviewModal(req.schedulingId, false, 'SCHEDULING')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm">
+                                                        <X size={16}/> Rejeitar
                                                     </button>
                                                 </div>
                                             </div>
@@ -537,8 +537,8 @@ function ManagerDashboard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
-                                                    <button onClick={() => openReviewModal(req.id, false, 'USER')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm"><X size={16}/> Rejeitar</button>
                                                     <button onClick={() => openReviewModal(req.id, true, 'USER')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-bold text-sm"><Check size={16}/> Aprovar</button>
+                                                    <button onClick={() => openReviewModal(req.id, false, 'USER')} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-bold text-sm"><X size={16}/> Rejeitar</button>
                                                 </div>
                                             </div>
                                         ))

@@ -350,11 +350,11 @@ function AdminDashboard() {
                                                     </div>
                                                 ) : (
                                                     <div className="flex gap-2 w-full">
+                                                        <button onClick={() => startReview(request.additionalHoursRequestId, 'APPROVED')} className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] py-2 rounded-lg transition-colors font-bold uppercase tracking-wider">
+                                                            <Check size={14} /> Aprovar
+                                                        </button>
                                                         <button onClick={() => startReview(request.additionalHoursRequestId, 'REJECTED')} className="flex-1 flex justify-center items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-[11px] py-2 rounded-lg transition-colors font-bold uppercase tracking-wider">
                                                             <X size={14} /> Recusar
-                                                        </button>
-                                                        <button onClick={() => startReview(request.additionalHoursRequestId, 'APPROVED')} className="flex-1 flex justify-center items-center gap-1.5 bg-[#003399] hover:bg-[#002266] text-white text-[11px] py-2 rounded-lg transition-colors font-bold uppercase tracking-wider shadow-sm">
-                                                            <Check size={14} /> Aprovar
                                                         </button>
                                                     </div>
                                                 )}
