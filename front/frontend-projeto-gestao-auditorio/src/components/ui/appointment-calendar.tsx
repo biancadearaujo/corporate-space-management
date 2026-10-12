@@ -172,19 +172,27 @@ export default function AppointmentCalendar() {
         const fetchUserProfile = async () => {
             if (!token) return;
             try {
-                const response = await axios.get('http://localhost:8080/collaborator/user/me', {
+                // Lógica dinâmica para buscar o perfil na rota correta de cada role
+                let endpoint = 'http://localhost:8080/collaborator/user/me';
+                if (hasRole('ROLE_ADMIN')) {
+                    endpoint = 'http://localhost:8080/admin/user/me';
+                } else if (hasRole('ROLE_MANAGER')) {
+                    endpoint = 'http://localhost:8080/manager/user/me';
+                }
+
+                const response = await axios.get(endpoint, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (response.data && response.data.name) {
-                    setDbUserName(response.data.name);
+                if (response.data && (response.data.name || response.data.username)) {
+                    setDbUserName(response.data.name || response.data.username);
                 }
             } catch (error) {
                 console.error("Erro ao buscar perfil do usuário", error);
             }
         };
         fetchUserProfile();
-    }, [token]);
+    }, [token, hasRole]);
 
     useEffect(() => {
         if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
