@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import {
     Building2,
+    ChevronLeft,
     ChevronRight,
     Trash2,
     Monitor,
@@ -15,13 +16,13 @@ import {
     Check,
     Pencil,
     SplitSquareHorizontal,
-    Image as ImageIcon
+    Image as ImageIcon,
+    AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 
-// --- TIPAGEM ATUALIZADA CONFORME SEU DTO JAVA ---
-
+// --- TIPAGEM ---
 interface NewEquipment {
     id?: string;
     name: string;              
@@ -57,7 +58,7 @@ interface Venue {
     equipments?: NewEquipment[]; 
     accessibility?: AccessibilityPayload;
     subVenues?: NewSubVenue[]; 
-    openingHours?: OpeningHour[]; // Adicionado para carregar na edição
+    openingHours?: OpeningHour[]; 
 }
 
 interface VenueResponse {
@@ -79,6 +80,11 @@ interface AccessibilityPayload {
     audioGuidanceSystem: boolean;
 }
 
+interface Feedback {
+    type: 'success' | 'error';
+    message: string;
+}
+
 const DAYS_OF_WEEK = [
     { id: 'MONDAY', label: 'Segunda' },
     { id: 'TUESDAY', label: 'Terça' },
@@ -96,6 +102,36 @@ const StatusBadge = ({ status }: { status: boolean }) => (
     </span>
 );
 
+const FeedbackMessage = ({ feedback }: { feedback: Feedback | null }) => {
+    if (!feedback) return null;
+    const isSuccess = feedback.type === 'success';
+    return (
+        <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 text-sm font-medium animate-in fade-in zoom-in-95 duration-200 ${isSuccess ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+            <div className={`w-2 h-2 rounded-full shrink-0 ${isSuccess ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            {feedback.message}
+        </div>
+    );
+};
+
+const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50">
+                    <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function SpaceRegistrationAndList() {
     const { user, token, logout } = useAuth();
     const router = useRouter();
@@ -103,45 +139,37 @@ export default function SpaceRegistrationAndList() {
     const [dbUserName, setDbUserName] = useState<string>('');
     const [saving, setSaving] = useState(false);
     
-    // --- ESTADO PARA CONTROLAR EDIÇÃO ---
+    // --- ESTADOS DE FEEDBACK E MODAL ---
+    const [feedback, setFeedback] = useState<Feedback | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [venueToDelete, setVenueToDelete] = useState<string | null>(null);
+    
     const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
 
-    // Estados de Acessibilidade
     const [hasAccessibility, setHasAccessibility] = useState(false);
     const [accessData, setAccessData] = useState<AccessibilityPayload>({
         accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
         directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
     });
 
-    // --- ESTADOS DE EQUIPAMENTO ---
     const [hasEquipment, setHasEquipment] = useState(false);
     const [equipmentList, setEquipmentList] = useState<NewEquipment[]>([]);
     const [tempEquipment, setTempEquipment] = useState<NewEquipment>({
-        name: '',
-        serialNumber: '',
-        conservationStatus: 'NEW',
-        available: true
+        name: '', serialNumber: '', conservationStatus: 'NEW', available: true
     });
 
-    // --- ESTADOS PARA ESPAÇOS DIVISÍVEIS (SUB-VENUES) ---
     const [isDivisible, setIsDivisible] = useState(false);
     const [subVenuesList, setSubVenuesList] = useState<NewSubVenue[]>([]);
     const [tempSubVenue, setTempSubVenue] = useState<NewSubVenue>({
-        name: '',
-        capacity: '',
-        maximumMonths: 6
+        name: '', capacity: '', maximumMonths: 6
     });
 
-    // --- ESTADO DE DIAS DE FUNCIONAMENTO ---
     const [activeDays, setActiveDays] = useState<string[]>(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
 
     const handleDayToggle = (dayId: string) => {
-        setActiveDays(prev => 
-            prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
-        );
+        setActiveDays(prev => prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]);
     };
 
-    // Estado do Espaço
     const defaultSpaceData = {
         name: '', capacity: '', size: '', image: '', 
         minimumHoursToCancel: '96', maximumMonths: 6,
@@ -151,13 +179,13 @@ export default function SpaceRegistrationAndList() {
     
     const [spaceData, setSpaceData] = useState(defaultSpaceData);
 
-    // Estados da Lista
+    // Estados da Lista e Paginação
     const [venues, setVenues] = useState<Venue[]>([]);
     const [loadingList, setLoadingList] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
+    const [totalPagesServer, setTotalPagesServer] = useState(1);
     const itemsPerPage = 5;
 
-    // --- FETCH DATA ---
     useEffect(() => {
         const fetchUserProfile = async () => {
             const authToken = token || localStorage.getItem('token');
@@ -181,12 +209,13 @@ export default function SpaceRegistrationAndList() {
                 { headers: { Authorization: `Bearer ${authToken}` } }
             );
 
-            // Proteção contra falhas da paginação
             const fetchedVenues = Array.isArray(response.data) ? response.data : response.data?.content || [];
             const pageNumber = response.data?.number || 0;
+            const totalPages = response.data?.totalPages || 1;
 
             setVenues(fetchedVenues);
             setCurrentPage(pageNumber);
+            setTotalPagesServer(totalPages);
         } catch (err) {
             console.error('Erro ao buscar espaços:', err);
             setVenues([]);
@@ -195,9 +224,7 @@ export default function SpaceRegistrationAndList() {
         }
     }, [token]);
 
-    useEffect(() => {
-        fetchVenues(currentPage, itemsPerPage);
-    }, [fetchVenues, currentPage]);
+    useEffect(() => { fetchVenues(currentPage, itemsPerPage); }, [fetchVenues, currentPage]);
 
     useEffect(() => {
         if (spaceData.venueType !== 'AUDITORIUM') {
@@ -206,7 +233,6 @@ export default function SpaceRegistrationAndList() {
         }
     }, [spaceData.venueType]);
 
-    // --- HANDLERS NAVBAR ---
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
@@ -221,7 +247,6 @@ export default function SpaceRegistrationAndList() {
         else router.push('/');
     };
 
-    // --- HANDLERS GERAIS ---
     const handleSpaceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const target = e.target;
         const name = target.name;
@@ -249,11 +274,13 @@ export default function SpaceRegistrationAndList() {
     const addEquipmentToList = (e: React.MouseEvent) => {
         e.preventDefault(); 
         if (!tempEquipment.name.trim() || !tempEquipment.serialNumber.trim()) {
-            alert("Preencha o Nome e o Número de Série do equipamento.");
+            setFeedback({ type: 'error', message: 'Preencha o Nome e o Número de Série do equipamento.' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
         setEquipmentList(prev => [...prev, tempEquipment]);
         setTempEquipment({ name: '', serialNumber: '', conservationStatus: 'NEW', available: true });
+        setFeedback(null);
     };
 
     const removeEquipmentFromList = (index: number) => {
@@ -263,36 +290,34 @@ export default function SpaceRegistrationAndList() {
     const addSubVenueToList = (e: React.MouseEvent) => {
         e.preventDefault();
         if (!tempSubVenue.name.trim() || !tempSubVenue.capacity) {
-            alert("Preencha o Nome e a Capacidade do sub-espaço.");
+            setFeedback({ type: 'error', message: 'Preencha o Nome e a Capacidade do sub-espaço.' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
         setSubVenuesList(prev => [...prev, tempSubVenue]);
         setTempSubVenue({ name: '', capacity: '', maximumMonths: 6 });
+        setFeedback(null);
     };
 
     const removeSubVenueFromList = (index: number) => {
         setSubVenuesList(prev => prev.filter((_, i) => i !== index));
     };
 
-    // --- HANDLER EDIÇÃO ---
     const handleEditClick = async (venueId: string) => {
         try {
+            setFeedback(null);
             const authToken = token || localStorage.getItem('token');
             const response = await axios.get<Venue>(`http://localhost:8080/admin/venue/${venueId}`, {
                 headers: { Authorization: `Bearer ${authToken}` }
             });
 
             const venue = response.data;
-            
             setEditingVenueId(venue.venueId);
 
-            // Tenta resgatar os horários existentes da base de dados
             let oTime = '08:00';
             let cTime = '18:00';
             if (venue.openingHours && venue.openingHours.length > 0) {
-                // Recupera a lista de dias ativos
                 setActiveDays(venue.openingHours.map(oh => oh.dayOfWeek));
-                // Formata o horário para o input "time" (remove os segundos)
                 oTime = venue.openingHours[0].openingTime.substring(0, 5);
                 cTime = venue.openingHours[0].closingTime.substring(0, 5);
             } else {
@@ -344,7 +369,8 @@ export default function SpaceRegistrationAndList() {
 
         } catch (error) {
             console.error("Erro ao buscar detalhes do espaço:", error);
-            alert("Não foi possível carregar os dados do espaço para edição.");
+            setFeedback({ type: 'error', message: 'Não foi possível carregar os dados do espaço para edição.' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
@@ -361,19 +387,22 @@ export default function SpaceRegistrationAndList() {
             accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
             directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
         });
+        setFeedback(null);
     };
 
-    // --- SUBMIT ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFeedback(null);
         
         if (isDivisible && spaceData.venueType === 'AUDITORIUM' && subVenuesList.length === 0) {
-            alert('Um espaço divisível deve ter pelo menos um sub-espaço cadastrado.');
+            setFeedback({ type: 'error', message: 'Um espaço divisível deve ter pelo menos um sub-espaço cadastrado.' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
 
         if (activeDays.length === 0) {
-            alert('Selecione pelo menos um dia de funcionamento para este espaço.');
+            setFeedback({ type: 'error', message: 'Selecione pelo menos um dia de funcionamento para este espaço.' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
 
@@ -381,7 +410,6 @@ export default function SpaceRegistrationAndList() {
         try {
             const authToken = token || localStorage.getItem('token');
             if (!authToken) {
-                alert('Token não encontrado.');
                 router.push('/login');
                 return;
             }
@@ -396,7 +424,6 @@ export default function SpaceRegistrationAndList() {
             });
             const generatedAccessibilityId = accessResponse.data.accessibilityId;
             
-            // Formata o horário apenas para os dias marcados
             const formatTime = (timeStr: string) => timeStr.length === 5 ? `${timeStr}:00` : timeStr;
             const formattedOpeningHours = activeDays.map(dia => ({
                 dayOfWeek: dia,
@@ -427,12 +454,12 @@ export default function SpaceRegistrationAndList() {
                 await axios.put(`http://localhost:8080/admin/venue/${editingVenueId}`, venuePayload, { 
                     headers: { Authorization: `Bearer ${authToken}` } 
                 });
-                alert('Espaço atualizado com sucesso! ✅');
+                setFeedback({ type: 'success', message: 'Espaço atualizado com sucesso!' });
             } else {
                 await axios.post('http://localhost:8080/admin/venue', venuePayload, { 
                     headers: { Authorization: `Bearer ${authToken}` } 
                 });
-                alert('Espaço cadastrado com sucesso! ✅');
+                setFeedback({ type: 'success', message: 'Espaço cadastrado com sucesso!' });
             }
 
             cancelEditing();
@@ -441,23 +468,36 @@ export default function SpaceRegistrationAndList() {
         } catch (err: any) {
             console.error(err);
             const errorMessage = err.response?.data?.message || err.response?.data || "Verifique os dados informados.";
-            alert(`Erro do Servidor: \n${errorMessage}`);
+            setFeedback({ type: 'error', message: `Erro do Servidor: ${errorMessage}` });
         } finally {
             setSaving(false);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if(!confirm("Tem a certeza que deseja excluir este espaço? Esta ação é irreversível.")) return;
+    const confirmDelete = (id: string) => {
+        setVenueToDelete(id);
+        setDeleteModalOpen(true);
+    };
+
+    const executeDelete = async () => {
+        if (!venueToDelete) return;
+        
         try {
             const authToken = token || localStorage.getItem('token');
-            await axios.delete(`http://localhost:8080/admin/venue/${id}`, { headers: { Authorization: `Bearer ${authToken}` } });
-            if (editingVenueId === id) {
+            await axios.delete(`http://localhost:8080/admin/venue/${venueToDelete}`, { headers: { Authorization: `Bearer ${authToken}` } });
+            
+            if (editingVenueId === venueToDelete) {
                 cancelEditing();
             }
             fetchVenues(currentPage, itemsPerPage);
+            setFeedback({ type: 'success', message: 'Espaço excluído com sucesso.' });
         } catch (err) {
-            alert("Erro ao excluir.");
+            setFeedback({ type: 'error', message: 'Erro ao excluir o espaço. Verifique se ele não possui dependências.' });
+        } finally {
+            setDeleteModalOpen(false);
+            setVenueToDelete(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
 
@@ -527,6 +567,9 @@ export default function SpaceRegistrationAndList() {
                         </div>
                     </div>
                 </header>
+
+                {/* ALERTA VISUAL INTEGRADO */}
+                <FeedbackMessage feedback={feedback} />
 
                 {/* --- FORMULÁRIO --- */}
                 <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden mb-10">
@@ -859,13 +902,14 @@ export default function SpaceRegistrationAndList() {
                     </form>
                 </div>
 
-                {/* Tabela de Espaços (Lista) */}
-                <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden mb-10">
+                {/* Tabela de Espaços (Lista com Paginação) */}
+                <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden mb-10 flex flex-col">
                     <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                         <h2 className="text-xl font-bold text-slate-800">Espaços Cadastrados</h2>
                         <button onClick={() => fetchVenues(0, itemsPerPage)} className="text-[#003399] text-sm font-semibold hover:underline">Atualizar Tabela</button>
                     </div>
-                    <div className="overflow-x-auto">
+                    
+                    <div className="overflow-x-auto flex-1">
                         <table className="w-full text-left border-collapse text-slate-600">
                             <thead className="bg-[#F0F2F5]/50 text-[11px] uppercase tracking-wider font-bold text-slate-500">
                                 <tr>
@@ -879,6 +923,8 @@ export default function SpaceRegistrationAndList() {
                             <tbody className="divide-y divide-slate-100">
                                 {loadingList ? (
                                     <tr><td colSpan={5} className="p-8 text-center text-slate-400 font-medium">Carregando...</td></tr>
+                                ) : venues.length === 0 ? (
+                                    <tr><td colSpan={5} className="p-12 text-center text-slate-400 font-medium">Nenhum espaço cadastrado.</td></tr>
                                 ) : venues.map((venue) => (
                                     <tr key={venue.venueId} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4 font-bold text-slate-800">{venue.name}</td>
@@ -890,7 +936,7 @@ export default function SpaceRegistrationAndList() {
                                                 <button onClick={() => handleEditClick(venue.venueId)} className="p-2 text-slate-400 hover:text-[#003399] hover:bg-blue-50 rounded-lg transition-colors" title="Editar Espaço">
                                                     <Pencil size={18} />
                                                 </button>
-                                                <button onClick={() => handleDelete(venue.venueId)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                                <button onClick={() => confirmDelete(venue.venueId)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
                                                     <Trash2 size={18} />
                                                 </button>
                                             </div>
@@ -900,9 +946,39 @@ export default function SpaceRegistrationAndList() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* CONTROLES DE PAGINAÇÃO (Adicionados aqui) */}
+                    <div className="p-4 flex items-center justify-end gap-4 border-t border-slate-100 bg-white">
+                        <span className="text-sm font-medium text-slate-500">Página {currentPage + 1} de {totalPagesServer || 1}</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => fetchVenues(currentPage - 1, itemsPerPage)} disabled={currentPage === 0} className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
+                            <button onClick={() => fetchVenues(currentPage + 1, itemsPerPage)} disabled={currentPage >= totalPagesServer - 1} className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
+                        </div>
+                    </div>
                 </div>
 
             </main>
+
+            {/* MODAL CUSTOMIZADO DE EXCLUSÃO (Para evitar o "confirm" do navegador) */}
+            <Modal isOpen={deleteModalOpen} onClose={() => { setDeleteModalOpen(false); setVenueToDelete(null); }} title="Confirmar Exclusão">
+                <div className="flex flex-col items-center text-center pb-4 pt-2">
+                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                        <AlertTriangle size={32} />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-800 mb-2">Excluir Espaço?</h4>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Tem a certeza de que deseja remover este espaço do sistema? Esta ação é irreversível e pode afetar agendamentos vinculados.
+                    </p>
+                    <div className="flex justify-center gap-3 w-full">
+                        <button onClick={() => { setDeleteModalOpen(false); setVenueToDelete(null); }} className="flex-1 py-3 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                            Cancelar
+                        </button>
+                        <button onClick={executeDelete} className="flex-1 py-3 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors">
+                            Sim, Excluir
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
