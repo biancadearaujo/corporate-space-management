@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -105,20 +106,43 @@ public class AdminVenueService {
         Venue venue = venueRepository.findById(venueId).orElseThrow(() ->
                 new NotFoundException("Venue not found"));
 
-        if (venueDTO.name() != null){
-            venue.setName(venueDTO.name());
+        if (venueDTO.name() != null) venue.setName(venueDTO.name());
+        if (venueDTO.capacity() != null) venue.setCapacity(venueDTO.capacity());
+        if (venueDTO.size() != null) venue.setSize(venueDTO.size());
+        if (venueDTO.image() != null) venue.setImage(venueDTO.image());
+        if (venueDTO.parking() != null) venue.setParking(venueDTO.parking());
+        if (venueDTO.venueType() != null) venue.setVenueType(venueDTO.venueType());
+
+        venue.setDivisible(venueDTO.divisible());
+        venue.setMaximumMonths(venueDTO.maximumMonths());
+
+        if (venueDTO.minimumHoursToCancel() != null) {
+            venue.setMinimumHoursToCancel(venueDTO.minimumHoursToCancel());
         }
-        if (venueDTO.capacity() != null){
-            venue.setCapacity(venueDTO.capacity());
+
+        if (venueDTO.accessibilityId() != null) {
+            Accessibility accessibility = accessibilityRepository.findById(venueDTO.accessibilityId())
+                    .orElseThrow(() -> new NotFoundException("Accessibility not found."));
+            venue.setAccessibility(accessibility);
         }
-        if (venueDTO.size() != null){
-            venue.setSize(venueDTO.size());
-        }
-        if (venueDTO.image() != null){
-            venue.setImage(venueDTO.image());
-        }
-        if (venueDTO.parking() != null){
-            venue.setParking(venueDTO.parking());
+
+        if (venueDTO.openingHours() != null) {
+
+            List<OpeningHours> newHoursList = venueDTO.openingHours().stream().map(dto -> {
+                OpeningHours openingHours = new OpeningHours();
+                openingHours.setDayOfWeek(dto.dayOfWeek());
+                openingHours.setOpeningTime(dto.openingTime());
+                openingHours.setClosingTime(dto.closingTime());
+                openingHours.setVenue(venue);
+                return openingHours;
+            }).collect(java.util.stream.Collectors.toList());
+
+            if (venue.getOpeningHours() != null) {
+                venue.getOpeningHours().clear();
+                venue.getOpeningHours().addAll(newHoursList);
+            } else {
+                venue.setOpeningHours(newHoursList);
+            }
         }
 
         Venue updated = venueRepository.save(venue);

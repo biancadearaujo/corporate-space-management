@@ -30,7 +30,7 @@ public record VenueRequestDTO(
         VenueType venueType,
 
         @NotNull(message = "Maximum months cannot be null.")
-        int maximumMonths,
+        Integer maximumMonths,
 
         boolean divisible,
 

@@ -37,19 +37,27 @@ interface NewSubVenue {
     maximumMonths: number;
 }
 
+interface OpeningHour {
+    dayOfWeek: string;
+    openingTime: string;
+    closingTime: string;
+}
+
 interface Venue {
     venueId: string;
     name: string;
-    capacity: string; // Garantido como String conforme o backend
-    size: string;     // Garantido como String conforme o backend
+    capacity: string; 
+    size: string;     
     image: string;
     parking: boolean;
     divisible: boolean; 
     minimumHoursToCancel: number;
+    maximumMonths: number;
     venueType?: string;
     equipments?: NewEquipment[]; 
     accessibility?: AccessibilityPayload;
     subVenues?: NewSubVenue[]; 
+    openingHours?: OpeningHour[]; // Adicionado para carregar na edição
 }
 
 interface VenueResponse {
@@ -70,6 +78,16 @@ interface AccessibilityPayload {
     brailleSignage: boolean;
     audioGuidanceSystem: boolean;
 }
+
+const DAYS_OF_WEEK = [
+    { id: 'MONDAY', label: 'Segunda' },
+    { id: 'TUESDAY', label: 'Terça' },
+    { id: 'WEDNESDAY', label: 'Quarta' },
+    { id: 'THURSDAY', label: 'Quinta' },
+    { id: 'FRIDAY', label: 'Sexta' },
+    { id: 'SATURDAY', label: 'Sábado' },
+    { id: 'SUNDAY', label: 'Domingo' }
+];
 
 // --- COMPONENTES VISUAIS ---
 const StatusBadge = ({ status }: { status: boolean }) => (
@@ -114,12 +132,21 @@ export default function SpaceRegistrationAndList() {
         maximumMonths: 6
     });
 
-    // Estado do Espaço (Adaptado para usar Strings em Capacity e Size)
+    // --- ESTADO DE DIAS DE FUNCIONAMENTO ---
+    const [activeDays, setActiveDays] = useState<string[]>(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
+
+    const handleDayToggle = (dayId: string) => {
+        setActiveDays(prev => 
+            prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]
+        );
+    };
+
+    // Estado do Espaço
     const defaultSpaceData = {
-        name: '', capacity: '', size: '', image: '', minimumHoursToCancel: '96',
+        name: '', capacity: '', size: '', image: '', 
+        minimumHoursToCancel: '96', maximumMonths: 6,
         parking: false, venueType: 'AUDITORIUM',
-        maximumMonths: 6, openingTime: '07:00:00', closingTime: '23:00:00',
-        openingHours: [],
+        openingTime: '08:00', closingTime: '18:00'
     };
     
     const [spaceData, setSpaceData] = useState(defaultSpaceData);
@@ -154,10 +181,15 @@ export default function SpaceRegistrationAndList() {
                 { headers: { Authorization: `Bearer ${authToken}` } }
             );
 
-            setVenues(response.data.content);
-            setCurrentPage(response.data.number);
+            // Proteção contra falhas da paginação
+            const fetchedVenues = Array.isArray(response.data) ? response.data : response.data?.content || [];
+            const pageNumber = response.data?.number || 0;
+
+            setVenues(fetchedVenues);
+            setCurrentPage(pageNumber);
         } catch (err) {
             console.error('Erro ao buscar espaços:', err);
+            setVenues([]);
         } finally {
             setLoadingList(false);
         }
@@ -253,6 +285,20 @@ export default function SpaceRegistrationAndList() {
             const venue = response.data;
             
             setEditingVenueId(venue.venueId);
+
+            // Tenta resgatar os horários existentes da base de dados
+            let oTime = '08:00';
+            let cTime = '18:00';
+            if (venue.openingHours && venue.openingHours.length > 0) {
+                // Recupera a lista de dias ativos
+                setActiveDays(venue.openingHours.map(oh => oh.dayOfWeek));
+                // Formata o horário para o input "time" (remove os segundos)
+                oTime = venue.openingHours[0].openingTime.substring(0, 5);
+                cTime = venue.openingHours[0].closingTime.substring(0, 5);
+            } else {
+                setActiveDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
+            }
+
             setSpaceData({
                 ...defaultSpaceData,
                 name: venue.name,
@@ -262,6 +308,9 @@ export default function SpaceRegistrationAndList() {
                 venueType: venue.venueType || 'AUDITORIUM',
                 parking: venue.parking,
                 minimumHoursToCancel: venue.minimumHoursToCancel?.toString() || '96',
+                maximumMonths: venue.maximumMonths || 6,
+                openingTime: oTime,
+                closingTime: cTime
             });
 
             if (venue.equipments && venue.equipments.length > 0) {
@@ -306,6 +355,7 @@ export default function SpaceRegistrationAndList() {
         setEquipmentList([]);
         setIsDivisible(false);
         setSubVenuesList([]);
+        setActiveDays(['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']);
         setHasAccessibility(false);
         setAccessData({
             accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
@@ -322,6 +372,11 @@ export default function SpaceRegistrationAndList() {
             return;
         }
 
+        if (activeDays.length === 0) {
+            alert('Selecione pelo menos um dia de funcionamento para este espaço.');
+            return;
+        }
+
         setSaving(true);
         try {
             const authToken = token || localStorage.getItem('token');
@@ -331,7 +386,6 @@ export default function SpaceRegistrationAndList() {
                 return;
             }
 
-            // Garante que existe sempre um registo de acessibilidade associado
             const accessPayload = hasAccessibility ? accessData : {
                 accessRamp: false, elevator: false, accessibleBathroom: false, accessibleParking: false,
                 directionalTactileFlooring: false, brailleSignage: false, audioGuidanceSystem: false,
@@ -342,16 +396,31 @@ export default function SpaceRegistrationAndList() {
             });
             const generatedAccessibilityId = accessResponse.data.accessibilityId;
             
-            // Tratamento das Strings de tamanho e imagem fallback
+            // Formata o horário apenas para os dias marcados
+            const formatTime = (timeStr: string) => timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+            const formattedOpeningHours = activeDays.map(dia => ({
+                dayOfWeek: dia,
+                openingTime: formatTime(spaceData.openingTime),
+                closingTime: formatTime(spaceData.closingTime)
+            }));
+
             const venuePayload = {
-                ...spaceData,
+                name: spaceData.name,
                 capacity: String(spaceData.capacity),
                 size: String(spaceData.size),
                 image: spaceData.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800', 
+                parking: spaceData.parking,
                 accessibilityId: generatedAccessibilityId, 
-                equipments: hasEquipment ? equipmentList : [],
+                venueType: spaceData.venueType,
+                
+                minimumHoursToCancel: Number(spaceData.minimumHoursToCancel),
+                maximumMonths: Number(spaceData.maximumMonths),
+                
                 divisible: spaceData.venueType === 'AUDITORIUM' ? isDivisible : false,
-                subVenues: (isDivisible && spaceData.venueType === 'AUDITORIUM') ? subVenuesList : []
+                
+                openingHours: formattedOpeningHours,
+                subVenues: (isDivisible && spaceData.venueType === 'AUDITORIUM') ? subVenuesList : [],
+                equipments: hasEquipment ? equipmentList : []
             };
 
             if (editingVenueId) {
@@ -467,7 +536,7 @@ export default function SpaceRegistrationAndList() {
                             {editingVenueId ? 'Editar Espaço' : 'Novo Espaço'}
                         </h2>
                         {editingVenueId && (
-                            <button onClick={cancelEditing} className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
+                            <button type="button" onClick={cancelEditing} className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
                                 Cancelar Edição
                             </button>
                         )}
@@ -562,6 +631,62 @@ export default function SpaceRegistrationAndList() {
                             </div>
                         </div>
 
+                        {/* --- CONFIGURAÇÃO DE REGRAS (RN01 e RN02) --- */}
+                        <div className="border-t border-slate-100 pt-6">
+                            <h4 className="text-sm font-bold text-[#003399] mb-4">Regras de Agendamento do Espaço</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Antecedência Mínima (Horas)</label>
+                                    <input type="number" name="minimumHoursToCancel" value={spaceData.minimumHoursToCancel} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-slate-50 transition-all" placeholder="Ex: 96" />
+                                    <p className="text-[10px] text-slate-400 mt-1">Tempo mínimo antes do evento para reservar.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Antecedência Máxima (Meses)</label>
+                                    <input type="number" name="maximumMonths" value={spaceData.maximumMonths} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-slate-50 transition-all" placeholder="Ex: 6" />
+                                    <p className="text-[10px] text-slate-400 mt-1">Quão longe no futuro este espaço pode ser reservado.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* --- HORÁRIO DE FUNCIONAMENTO --- */}
+                        <div className="border-t border-slate-100 pt-6">
+                            <h4 className="text-sm font-bold text-[#003399] mb-4">Horário de Funcionamento Padrão</h4>
+                            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col gap-6">
+                                
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Dias de Funcionamento</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {DAYS_OF_WEEK.map(day => (
+                                            <button
+                                                key={day.id}
+                                                type="button"
+                                                onClick={() => handleDayToggle(day.id)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                                    activeDays.includes(day.id) 
+                                                        ? 'bg-[#003399] text-white shadow-sm' 
+                                                        : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {day.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2">Clique para selecionar ou remover os dias em que o espaço estará aberto.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200/60">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Abre às</label>
+                                        <input type="time" name="openingTime" value={spaceData.openingTime} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-white transition-all" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Fecha às</label>
+                                        <input type="time" name="closingTime" value={spaceData.closingTime} onChange={handleSpaceChange} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] text-sm bg-white transition-all" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* --- SECÇÃO DE SUB-ESPAÇOS (DIVISÍVEIS) --- */}
                         {isDivisible && spaceData.venueType === 'AUDITORIUM' && (
                             <div className="mt-6 pt-6 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
@@ -584,7 +709,7 @@ export default function SpaceRegistrationAndList() {
                                             <input type="number" value={tempSubVenue.maximumMonths} onChange={(e) => setTempSubVenue({...tempSubVenue, maximumMonths: Number(e.target.value)})} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#003399]/20 focus:border-[#003399] transition-all" />
                                         </div>
                                         <div className="col-span-12 md:col-span-2 flex justify-end">
-                                            <button onClick={addSubVenueToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] w-full flex items-center justify-center transition-colors shadow-sm">
+                                            <button type="button" onClick={addSubVenueToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] w-full flex items-center justify-center transition-colors shadow-sm">
                                                 <Plus size={20} />
                                             </button>
                                         </div>
@@ -608,7 +733,7 @@ export default function SpaceRegistrationAndList() {
                                                             <td className="px-4 py-3 text-slate-600">{item.capacity}</td>
                                                             <td className="px-4 py-3 text-slate-600">{item.maximumMonths}</td>
                                                             <td className="px-4 py-3 text-right">
-                                                                <button onClick={(e) => { e.preventDefault(); removeSubVenueFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
+                                                                <button type="button" onClick={(e) => { e.preventDefault(); removeSubVenueFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
                                                                     <X size={16} />
                                                                 </button>
                                                             </td>
@@ -678,7 +803,7 @@ export default function SpaceRegistrationAndList() {
                                                     <option value="false">Não</option>
                                                 </select>
                                             </div>
-                                            <button onClick={addEquipmentToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] self-end flex items-center justify-center transition-colors shadow-sm" title="Adicionar à lista">
+                                            <button type="button" onClick={addEquipmentToList} className="bg-[#003399] hover:bg-[#002266] text-white px-3 py-2 rounded-xl h-[38px] self-end flex items-center justify-center transition-colors shadow-sm" title="Adicionar à lista">
                                                 <Plus size={20} />
                                             </button>
                                         </div>
@@ -708,7 +833,7 @@ export default function SpaceRegistrationAndList() {
                                                                 </span>
                                                             </td>
                                                             <td className="px-4 py-3 text-right">
-                                                                <button onClick={(e) => { e.preventDefault(); removeEquipmentFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
+                                                                <button type="button" onClick={(e) => { e.preventDefault(); removeEquipmentFromList(index); }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors">
                                                                     <X size={16} />
                                                                 </button>
                                                             </td>

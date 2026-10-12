@@ -14,34 +14,34 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@RestController
-@RequestMapping("/admin")
-@AllArgsConstructor
-public class AdminSubVenueController {
-    private AdminSubVenueService adminSubVenueService;
+    @RestController
+    @RequestMapping("/admin")
+    @AllArgsConstructor
+    public class AdminSubVenueController {
+        private AdminSubVenueService adminSubVenueService;
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping({"/sub-venue"})
-    public ResponseEntity<Page<SubVenueResponseDTO>> getAllSubVenue(
-            @PageableDefault(
-                    size = 20,
-                    sort = "name") Pageable pageable){
-        var subVenue = adminSubVenueService.getAllVenues(pageable);
-        return ResponseEntity.ok(subVenue);
-    }
+        @PreAuthorize("hasRole('ADMIN')")
+        @GetMapping({"/sub-venue"})
+        public ResponseEntity<Page<SubVenueResponseDTO>> getAllSubVenue(
+                @PageableDefault(
+                        size = 20,
+                        sort = "name") Pageable pageable){
+            var subVenue = adminSubVenueService.getAllVenues(pageable);
+            return ResponseEntity.ok(subVenue);
+        }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping({"/sub-venue/{subVenueId}"})
-    public ResponseEntity<SubVenueResponseDTO> getSubVenueById(@PathVariable UUID subVenueId) {
-        var subVenue = adminSubVenueService.getSubVenueById(subVenueId);
-        return ResponseEntity.ok(subVenue);
-    }
+        @PreAuthorize("hasRole('ADMIN')")
+        @GetMapping({"/sub-venue/{subVenueId}"})
+        public ResponseEntity<SubVenueResponseDTO> getSubVenueById(@PathVariable UUID subVenueId) {
+            var subVenue = adminSubVenueService.getSubVenueById(subVenueId);
+            return ResponseEntity.ok(subVenue);
+        }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping({"/sub-venue/{subVenueId}"})
-    public ResponseEntity<SubVenueResponseDTO> updateSubVenue(@Valid @PathVariable UUID subVenueId,
-                                                              @RequestBody SubVenueRequestDTO subVenueRequest) {
-        var subVenue = adminSubVenueService.updateSubVenue(subVenueId, subVenueRequest);
-        return ResponseEntity.ok(subVenue);
+        @PreAuthorize("hasRole('ADMIN')")
+        @PutMapping({"/sub-venue/{subVenueId}"})
+        public ResponseEntity<SubVenueResponseDTO> updateSubVenue(@Valid @PathVariable UUID subVenueId,
+                                                                  @RequestBody SubVenueRequestDTO subVenueRequest) {
+            var subVenue = adminSubVenueService.updateSubVenue(subVenueId, subVenueRequest);
+            return ResponseEntity.ok(subVenue);
+        }
     }
-}
