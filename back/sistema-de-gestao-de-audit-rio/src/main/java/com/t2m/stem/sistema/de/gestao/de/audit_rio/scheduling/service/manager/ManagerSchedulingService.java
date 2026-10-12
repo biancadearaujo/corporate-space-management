@@ -134,6 +134,7 @@ public class ManagerSchedulingService {
         scheduling.setRegisterRequest(registerRequest);
         registerRequest.setScheduling(scheduling);
 
+
         schedulingRepository.save(scheduling);
         companyHoursQuotaService.updateConsumedHoursForCurrentMonth(currentUser.getCompany());
 

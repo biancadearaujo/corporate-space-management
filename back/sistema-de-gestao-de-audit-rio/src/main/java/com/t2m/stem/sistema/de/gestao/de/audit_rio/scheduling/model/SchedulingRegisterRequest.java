@@ -78,8 +78,13 @@ public class SchedulingRegisterRequest {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-        this.status = SchedulingRequestStatus.PENDING;
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+
+        if (this.status == null) {
+            this.status = SchedulingRequestStatus.PENDING;
+        }
     }
 
     @ManyToMany
