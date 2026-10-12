@@ -378,7 +378,7 @@ export default function RegisteredCompaniesPage() {
                             <thead className="bg-[#F0F2F5]/50 text-[11px] uppercase tracking-wider font-bold text-slate-500">
                                 <tr>
                                     <th className="px-6 py-4">Empresa</th>
-                                    <th className="px-6 py-4">Contato / CNPJ</th>
+                                    <th className="px-6 py-4">CNPJ / Contato</th>
                                     <th className="px-6 py-4">Consumo de Horas</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4 text-right">Ações</th>
