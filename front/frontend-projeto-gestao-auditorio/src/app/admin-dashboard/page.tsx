@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-    Building2, Bell, Menu, Check, X, CheckCircle2, XCircle, Info
+    Building2, Bell, Menu, Check, X, CheckCircle2, XCircle, Info, Mail, Hash, Clock
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
+import axios from 'axios'; // Necessário para a chamada do Modal
 
 // --- Interfaces ---
 interface AdditionalHoursResponseDTO {
@@ -34,6 +35,20 @@ interface MonthlyCreationDTO {
     count: number;
 }
 
+// Nova Interface para o Modal de Detalhes
+interface CompanyDetailsDTO {
+    companyId: string;
+    name: string;
+    cnpj: string;
+    email: string;
+    monthlyLimitHours: number;
+    consumedHours: number;
+    additionalHoursApproved: number;
+    maxMonthlyHoursAuditorium: number;
+    maxMonthlyHoursMeetingRoom: number;
+    maxMonthlyHoursCoworking: number;
+}
+
 // --- Componentes Visuais Auxiliares ---
 const StatCard = ({ title, value, subtext, active }: { title: string, value: string | number, subtext?: string, active?: boolean }) => (
     <div className={`p-6 rounded-[24px] shadow-sm border transition-all duration-300 ${
@@ -45,7 +60,7 @@ const StatCard = ({ title, value, subtext, active }: { title: string, value: str
     </div>
 );
 
-// --- NOVO: Gráfico Real Dinâmico ---
+// --- Gráfico Real Dinâmico ---
 const RealBarChart = ({ data }: { data: MonthlyCreationDTO[] }) => {
     if (!data || data.length === 0) {
         return <div className="h-[220px] flex items-center justify-center text-slate-400">Nenhum histórico disponível.</div>;
@@ -82,6 +97,29 @@ const RealBarChart = ({ data }: { data: MonthlyCreationDTO[] }) => {
     );
 };
 
+// --- Modal Component ---
+const Modal = ({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Building2 size={20} className="text-[#003399]" />
+                        {title}
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Componente Principal ---
 function AdminDashboard() {
     const { user, token, logout } = useAuth(); 
@@ -91,7 +129,7 @@ function AdminDashboard() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [dbUserName, setDbUserName] = useState<string>('');
 
-    // Estados de Dados (Agora com monthlyHistory)
+    // Estados de Dados 
     const [pendingRequests, setPendingRequests] = useState<AdditionalHoursResponseDTO[]>([]);
     const [companiesQuotas, setCompaniesQuotas] = useState<CompanyQuotaSummaryDTO[]>([]);
     const [dashboardStats, setDashboardStats] = useState({
@@ -106,6 +144,11 @@ function AdminDashboard() {
     // Estados de Ação
     const [reviewComment, setReviewComment] = useState('');
     const [activeReview, setActiveReview] = useState<{ requestId: string; status: 'APPROVED' | 'REJECTED' } | null>(null);
+
+    // --- NOVO: ESTADOS DO MODAL DE DETALHES DA EMPRESA ---
+    const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [selectedCompanyDetails, setSelectedCompanyDetails] = useState<CompanyDetailsDTO | null>(null);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
     // Alerta Personalizado
     const [customAlert, setCustomAlert] = useState({ isOpen: false, title: '', message: '', type: 'success' as 'success' | 'error' | 'info' });
@@ -141,10 +184,10 @@ function AdminDashboard() {
                 if (statsRes.ok) {
                     const statsData = await statsRes.json();
                     setDashboardStats({
-                        totalCompanies: statsData.totalActiveCompanies || 0, // Ajustado para bater com o Java
+                        totalCompanies: statsData.totalActiveCompanies || 0, 
                         activeReservations: statsData.activeReservations || 0,
-                        consumedHours: statsData.totalConsumedHours || 0,    // Ajustado para bater com o Java
-                        monthlyHistory: statsData.monthlyCreations || []     // Ajustado para o gráfico
+                        consumedHours: statsData.totalConsumedHours || 0,    
+                        monthlyHistory: statsData.monthlyCreations || []     
                     });
                 }
 
@@ -217,6 +260,61 @@ function AdminDashboard() {
         } catch (error) {
             console.error("Erro na revisão:", error);
             showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error");
+        }
+    };
+
+    // --- NOVO: Handler para abrir os Detalhes da Empresa no Modal ---
+    // --- NOVO: Handler para abrir os Detalhes da Empresa no Modal ---
+    const handleViewCompanyDetails = async (companyId: string) => {
+        setIsLoadingDetails(true);
+        setDetailsModalOpen(true);
+        
+        try {
+            const authToken = token || localStorage.getItem('token');
+            
+            // 1. Busca os dados básicos da empresa (CNPJ, Email)
+            const companyRes = await axios.get(`http://localhost:8080/admin/company/${companyId}`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            
+            // 2. Busca a Cota específica (Horas)
+            let quotaData = {
+                monthlyLimitHours: 0, consumedHours: 0, additionalHoursApproved: 0,
+                maxMonthlyHoursAuditorium: 0, maxMonthlyHoursMeetingRoom: 0, maxMonthlyHoursCoworking: 0
+            };
+            
+            try {
+                // Tenta buscar na rota padrão de cotas
+                const quotaRes = await axios.get(`http://localhost:8080/admin/company-hours-quota/company/${companyId}`, {
+                    headers: { Authorization: `Bearer ${authToken}` }
+                });
+                quotaData = quotaRes.data;
+            } catch (e) {
+                // Plano B: Se a rota falhar, puxa os dados da tabela que já está carregada no fundo da tela!
+                const fallback = companiesQuotas.find(c => c.companyId === companyId);
+                if (fallback) {
+                    quotaData.monthlyLimitHours = fallback.monthlyLimitHours;
+                    quotaData.consumedHours = fallback.consumedHours;
+                    quotaData.additionalHoursApproved = fallback.additionalHoursApproved;
+                }
+            }
+
+            // Junta tudo no estado do Modal
+            setSelectedCompanyDetails({
+                ...companyRes.data,
+                monthlyLimitHours: quotaData.monthlyLimitHours || 0,
+                consumedHours: quotaData.consumedHours || 0,
+                additionalHoursApproved: quotaData.additionalHoursApproved || 0,
+                maxMonthlyHoursAuditorium: quotaData.maxMonthlyHoursAuditorium || 0,
+                maxMonthlyHoursMeetingRoom: quotaData.maxMonthlyHoursMeetingRoom || 0,
+                maxMonthlyHoursCoworking: quotaData.maxMonthlyHoursCoworking || 0,
+            });
+        } catch (error) {
+            console.error("Erro ao buscar detalhes:", error);
+            showAlert("Erro", "Não foi possível carregar os detalhes da empresa.", "error");
+            setDetailsModalOpen(false);
+        } finally {
+            setIsLoadingDetails(false);
         }
     };
 
@@ -370,7 +468,7 @@ function AdminDashboard() {
                     <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
                         <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                             <h3 className="text-xl font-bold text-slate-800">Status das Cotas por Empresa</h3>
-                            <button className="bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold px-4 py-2 rounded-lg transition-colors border border-slate-200 shadow-sm uppercase tracking-wider">Exportar</button>
+                            <button className="bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold px-4 py-2 rounded-lg transition-colors border border-slate-200 shadow-sm uppercase tracking-wider"><Link href="/registered-companies" className="hover:text-[#003399] transition-colors">DETALHES GERAIS</Link></button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-600">
@@ -397,9 +495,9 @@ function AdminDashboard() {
                                         
                                         // UX: Lógica para a cor da barra de progresso baseada no consumo
                                         const percentUsed = totalLimit > 0 ? Math.min((consumed / totalLimit) * 100, 100) : 0;
-                                        let progressColor = "bg-emerald-500"; // Verde por defeito (confortável)
-                                        if (percentUsed >= 75) progressColor = "bg-orange-500"; // Laranja (alerta de uso elevado)
-                                        if (percentUsed >= 90) progressColor = "bg-red-500"; // Vermelho (limite quase atingido)
+                                        let progressColor = "bg-emerald-500"; 
+                                        if (percentUsed >= 75) progressColor = "bg-orange-500"; 
+                                        if (percentUsed >= 90) progressColor = "bg-red-500"; 
 
                                         return (
                                             <tr key={company.companyId || i} className="hover:bg-slate-50 transition-colors">
@@ -410,7 +508,6 @@ function AdminDashboard() {
                                                     {company.name}
                                                 </td>
                                                 
-                                                {/* UX Melhorada: Barra de Progresso + Labels Explícitas */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col gap-1.5 w-full max-w-[140px]">
                                                         <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
@@ -426,7 +523,6 @@ function AdminDashboard() {
                                                     </div>
                                                 </td>
 
-                                                {/* UX Melhorada: Indicação clara do que está livre, com cor de ênfase se esgotado */}
                                                 <td className="px-6 py-4 font-bold">
                                                     <span className={`text-xs px-2.5 py-1 rounded-md border ${
                                                         availableHours <= 0 
@@ -438,7 +534,10 @@ function AdminDashboard() {
                                                 </td>
                                                 
                                                 <td className="px-6 py-4 text-right">
-                                                    <button onClick={() => router.push('/registered-companies')} className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors">
+                                                    <button 
+                                                        onClick={() => handleViewCompanyDetails(company.companyId)} 
+                                                        className="text-[#003399] hover:bg-blue-50 font-bold text-[11px] uppercase tracking-wider rounded-md px-3 py-1.5 transition-colors"
+                                                    >
                                                         Ver Detalhes
                                                     </button>
                                                 </td>
@@ -454,7 +553,73 @@ function AdminDashboard() {
                 </div>
             </main>
 
-            {/* Alerta Customizado */}
+            {/* --- MODAL DE DETALHES DA EMPRESA (COMPACTO) --- */}
+            <Modal isOpen={detailsModalOpen} onClose={() => setDetailsModalOpen(false)} title="Detalhes da Empresa">
+                {isLoadingDetails ? (
+                    <div className="py-8 flex flex-col items-center justify-center">
+                        <div className="w-6 h-6 border-4 border-slate-200 border-t-[#003399] rounded-full animate-spin mb-3"></div>
+                        <p className="text-slate-500 font-medium text-xs">Carregando...</p>
+                    </div>
+                ) : selectedCompanyDetails ? (
+                    <div className="animate-in fade-in duration-300">
+                        
+                        {/* Cabeçalho Compacto (Na horizontal) */}
+                        <div className="flex items-center gap-4 pb-4 border-b border-slate-100 mb-4">
+                            <div className="w-12 h-12 bg-indigo-50 text-[#003399] rounded-xl flex items-center justify-center shrink-0 border border-indigo-100">
+                                <Building2 size={24} />
+                            </div>
+                            <div>
+                                <h4 className="text-lg font-bold text-slate-800 leading-tight">{selectedCompanyDetails.name}</h4>
+                                <p className="text-xs text-slate-500 mt-0.5 flex gap-3">
+                                    <span className="flex items-center gap-1">cnpj {selectedCompanyDetails.cnpj}</span>
+                                    <span className="flex items-center gap-1"><Mail size={12}/> {selectedCompanyDetails.email}</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Visão de Horas Compacta */}
+                        <div className="mb-4">
+                            <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Consumo Global</h5>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5"><Clock size={14}/> Cota Mensal</span>
+                                    <span className="text-sm font-bold text-slate-800">{selectedCompanyDetails.monthlyLimitHours}h</span>
+                                </div>
+                                <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex justify-between items-center">
+                                    <span className="text-xs font-semibold text-[#003399] flex items-center gap-1.5"><Clock size={14}/> Horas Extras</span>
+                                    <span className="text-sm font-bold text-[#003399]">{selectedCompanyDetails.additionalHoursApproved}h</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sub-cotas Compactas (Lado a Lado) */}
+                        <div>
+                            <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Restrições (Sub-Cotas)</h5>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-sm">
+                                    <span className="block text-[10px] text-slate-500 mb-0.5 truncate">Auditórios</span>
+                                    <span className="text-sm font-bold text-slate-800">{selectedCompanyDetails.maxMonthlyHoursAuditorium}h</span>
+                                </div>
+                                <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-sm">
+                                    <span className="block text-[10px] text-slate-500 mb-0.5 truncate">Salas de Reunião</span>
+                                    <span className="text-sm font-bold text-slate-800">{selectedCompanyDetails.maxMonthlyHoursMeetingRoom}h</span>
+                                </div>
+                                <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-sm">
+                                    <span className="block text-[10px] text-slate-500 mb-0.5 truncate">Coworking</span>
+                                    <span className="text-sm font-bold text-slate-800">{selectedCompanyDetails.maxMonthlyHoursCoworking}h</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Botão de Fechar Compacto */}
+                        <button onClick={() => setDetailsModalOpen(false)} className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors text-sm">
+                            Fechar Detalhes
+                        </button>
+                    </div>
+                ) : null}
+            </Modal>
+
+            {/* Alerta Customizado (Para erros/sucesso gerais) */}
             {customAlert.isOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
