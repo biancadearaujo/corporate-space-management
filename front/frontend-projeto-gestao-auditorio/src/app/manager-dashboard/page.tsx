@@ -199,7 +199,7 @@ function ManagerDashboard() {
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
-        router.replace('/'); 
+        router.replace('/login'); 
     };
 
     // --- AÇÕES ---

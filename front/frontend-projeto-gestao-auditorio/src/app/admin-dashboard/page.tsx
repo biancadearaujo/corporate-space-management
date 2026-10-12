@@ -208,7 +208,7 @@ function AdminDashboard() {
     const handleLogout = () => {
         if (logout) logout();
         else localStorage.removeItem('token');
-        router.replace('/'); 
+        router.replace('/login'); 
     };
 
     const handleDashboardClick = () => {
