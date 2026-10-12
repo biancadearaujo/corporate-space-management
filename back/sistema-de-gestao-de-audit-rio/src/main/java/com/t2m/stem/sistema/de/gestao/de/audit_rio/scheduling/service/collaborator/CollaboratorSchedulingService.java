@@ -57,12 +57,11 @@ public class CollaboratorSchedulingService {
 
     public Page<SchedulingResponseDTO> getAllScheduling(Pageable pageable) {
         User currentUser = userValidator.getAuthenticatedUser();
-        Company company = currentUser.getCompany();
+        UUID companyId = currentUser.getCompany().getCompanyId();
 
         userValidator.validateCollaborator(currentUser.getUserId());
 
-        return schedulingRepository.findByCreatedByAndCompanyCompanyId(currentUser.getUserId(),
-                        company.getCompanyId(),pageable)
+        return schedulingRepository.findAllByCompanyCompanyId(companyId, pageable)
                 .map(SchedulingResponseDTO::from);
     }
 
