@@ -61,10 +61,12 @@ interface Appointment {
     createdBy: string;
     companyId: string;
     venueId: string;
-    subVenueId?: string; // Adicionado
+    venueName?: string;
+    subVenueId?: string;
     cnpj?: string;
     equipmentsId: string[] | null;
     updateAt: string | null;
+    isOwnCompany?: boolean;
 }
 
 interface ApiPageResponse<T> {
@@ -73,15 +75,24 @@ interface ApiPageResponse<T> {
     totalElements: number;
 }
 
-const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues }: any) => {
+const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues, isAdmin }: any) => {
     if (!isOpen || !date) return null;
     
-    const getVenueName = (venueId: string, subVenueId?: string) => {
-        const venue = venues.find((v: any) => v.venueId === venueId);
+    const getVenueName = (appt: Appointment) => {
+        if (appt.venueName) {
+            const venue = venues.find((v: any) => v.venueId === appt.venueId);
+            if (appt.subVenueId && venue?.subVenues) {
+                const subVenue = venue.subVenues.find((sv: any) => sv.subVenueId === appt.subVenueId || sv.id === appt.subVenueId);
+                if (subVenue) return `${appt.venueName} - ${subVenue.name}`;
+            }
+            return appt.venueName;
+        }
+
+        const venue = venues.find((v: any) => v.venueId === appt.venueId);
         if (!venue) return 'Espaço desconhecido';
         
-        if (subVenueId && venue.subVenues) {
-            const subVenue = venue.subVenues.find((sv: any) => sv.subVenueId === subVenueId || sv.id === subVenueId);
+        if (appt.subVenueId && venue.subVenues) {
+            const subVenue = venue.subVenues.find((sv: any) => sv.subVenueId === appt.subVenueId || sv.id === appt.subVenueId);
             if (subVenue) return `${venue.name} - ${subVenue.name}`;
         }
         
@@ -100,17 +111,46 @@ const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues }: a
                     {appointments.length > 0 ? (
                         appointments
                             .sort((a: any, b: any) => parseApiDate(a.startAt).getTime() - parseApiDate(b.startAt).getTime())
-                            .map((appt: any) => (
-                                <div key={appt.schedulingId} className="p-4 bg-slate-50 rounded-2xl border-l-4 border-[#003399] hover:bg-slate-100 transition-colors">
-                                    <p className="font-bold text-slate-800 text-[15px]">{appt.name}</p>
-                                    <p className="text-sm text-slate-500 font-medium mt-1">
-                                        {parseApiDate(appt.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(appt.endAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                    <p className="text-xs text-slate-400 mt-2 font-medium bg-white px-2 py-1 inline-block rounded-md border border-slate-200">
-                                        Espaço: {getVenueName(appt.venueId, appt.subVenueId)}
-                                    </p>
-                                </div>
-                            ))
+                            .map((appt: Appointment) => {
+                                const isOwn = isAdmin || (appt.isOwnCompany !== false && appt.name !== 'Reservado');
+                                
+                                return (
+                                    <div 
+                                        key={appt.schedulingId} 
+                                        className={`p-4 rounded-2xl border-l-4 transition-colors ${
+                                            isOwn 
+                                                ? 'bg-slate-50 border-[#003399] hover:bg-slate-100' 
+                                                : 'bg-slate-100/70 border-slate-400 opacity-80'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <p className={`font-bold text-[15px] ${isOwn ? 'text-slate-800' : 'text-slate-500'}`}>
+                                                {isOwn ? appt.name : 'Horário Ocupado'}
+                                            </p>
+                                            {!isOwn && (
+                                                <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                                                    Outra Empresa
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className="text-sm text-slate-500 font-medium mt-1">
+                                            {parseApiDate(appt.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(appt.endAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+
+                                        {/* Exibe a descrição apenas se for da própria empresa ou Admin */}
+                                        {isOwn && appt.description && (
+                                            <p className="text-xs text-slate-500 mt-1.5 italic">
+                                                "{appt.description}"
+                                            </p>
+                                        )}
+
+                                        <p className="text-xs text-slate-600 mt-2 font-semibold bg-white px-2.5 py-1 inline-block rounded-md border border-slate-200">
+                                            Espaço: {getVenueName(appt)}
+                                        </p>
+                                    </div>
+                                );
+                            })
                     ) : (
                         <p className="text-slate-400 text-center py-6 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                             Nenhum agendamento para este dia.
@@ -141,9 +181,47 @@ export default function AppointmentCalendar() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [allCompanies, setAllCompanies] = useState<{ id: string; cnpj: string }[]>([]);
     const [companyFilter, setCompanyFilter] = useState<string>('all');
+    const [venueFilter, setVenueFilter] = useState<string>('all');
     const [isDayModalOpen, setIsDayModalOpen] = useState(false);
     const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
     const [dbUserName, setDbUserName] = useState<string>('');
+
+    const companyColors = ['bg-[#003399]', 'bg-[#00B4D8]', 'bg-[#F28C28]', 'bg-[#2A9D8F]', 'bg-[#9D4EDD]', 'bg-[#E63946]'];
+    const getCompanyColor = (companyId: string) => {
+        if (!companyId) return 'bg-slate-400';
+        const hash = companyId.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
+        return companyColors[Math.abs(hash % companyColors.length)];
+    };
+
+    const isMyCompanyAppointment = (appt: Appointment) => {
+        if (hasRole('ROLE_ADMIN')) return true;
+        if (appt.isOwnCompany !== undefined) return appt.isOwnCompany;
+        return appt.name !== 'Reservado'; // Fallback de segurança
+    };
+
+    const getAppointmentVenueLabel = (appt: Appointment) => {
+        if (appt.venueName) return appt.venueName;
+        const found = venues.find((v) => v.venueId === appt.venueId);
+        return found ? found.name : 'Espaço';
+    };
+
+    const formatTimeRange = (appt: Appointment) => {
+        const start = parseApiDate(appt.startAt);
+        const end = parseApiDate(appt.endAt);
+        const sStr = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+        const eStr = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+        return `${sStr} - ${eStr}`;
+    };
+
+    const getAppointmentBlockStyle = (appt: Appointment) => {
+        if (hasRole('ROLE_ADMIN')) {
+            return `${getCompanyColor(appt.companyId)} text-white cursor-pointer hover:shadow-md`;
+        }
+        if (isMyCompanyAppointment(appt)) {
+            return 'bg-[#003399] text-white cursor-pointer hover:shadow-md'; // Azul Órbita para a própria empresa
+        }
+        return 'bg-slate-200 text-slate-700 cursor-pointer border-slate-300 hover:bg-slate-300/80'; // Cinzento neutro para outras empresas
+    };
 
     const userRoleNormalized: 'COLLABORATOR' | 'MANAGER' | 'ADMIN' | null = 
         hasRole('ROLE_ADMIN') ? 'ADMIN' : 
@@ -172,7 +250,6 @@ export default function AppointmentCalendar() {
         const fetchUserProfile = async () => {
             if (!token) return;
             try {
-                // Lógica dinâmica para buscar o perfil na rota correta de cada role
                 let endpoint = 'http://localhost:8080/collaborator/user/me';
                 if (hasRole('ROLE_ADMIN')) {
                     endpoint = 'http://localhost:8080/admin/user/me';
@@ -202,17 +279,11 @@ export default function AppointmentCalendar() {
     const fetchAppointments = useCallback(async () => {
         if (!user || !token) return setAppointments([]);
         const isAdmin = hasRole('ROLE_ADMIN');
-        const isManager = hasRole('ROLE_MANAGER');
-        const isCollaborator = hasRole('ROLE_COLLABORATOR');
-
-        let endpoint = '';
-        if (isAdmin) endpoint = 'http://localhost:8080/admin/scheduling';
-        else if (isManager) endpoint = 'http://localhost:8080/manager/scheduling';
-        else if (isCollaborator) endpoint = 'http://localhost:8080/collaborator/scheduling';
-        else return;
 
         try {
-            const response = await axios.get<ApiPageResponse<Appointment>>(endpoint);
+            const response = await axios.get<ApiPageResponse<Appointment>>(
+                'http://localhost:8080/scheduling?size=100'
+            );
             const fetchedAppointments = response.data?.content || [];
             setAppointments(fetchedAppointments);
 
@@ -260,7 +331,6 @@ export default function AppointmentCalendar() {
                 return;
             }
 
-            // CORREÇÃO DA LÓGICA DE AUDITÓRIOS DIVISÍVEIS
             if (selectedVenue.venueType === 'AUDITORIUM' && selectedVenue.divisible && !subVenueId) {
                 setLoadingAvailableTimes(false);
                 return; 
@@ -306,7 +376,6 @@ export default function AppointmentCalendar() {
                     const timeSlotStart = slotDateTime.getTime();
                     const timeSlotEnd = new Date(slotDateTime.getTime() + 30 * 60000).getTime();
                     
-                    // LÓGICA DE CONFLITO COM SUB-ESPAÇOS
                     const isBooked = appointments.some((appointment) => {
                         const existingStart = parseApiDate(appointment.startAt).getTime();
                         const existingEnd = parseApiDate(appointment.endAt).getTime();
@@ -316,10 +385,8 @@ export default function AppointmentCalendar() {
 
                         if (selectedVenue.divisible) {
                             if (subVenueId) {
-                                // Se estamos a tentar marcar a Sala A, choca com agendamentos da Sala A OU agendamentos do Auditório inteiro
                                 return appointment.venueId === venueId && (appointment.subVenueId === subVenueId || !appointment.subVenueId);
                             } else {
-                                // Se estamos a tentar marcar o Auditório Inteiro, choca com qualquer agendamento lá dentro
                                 return appointment.venueId === venueId;
                             }
                         }
@@ -342,16 +409,11 @@ export default function AppointmentCalendar() {
         [venues, appointments],
     );
 
-    const companyColors = ['bg-[#003399]', 'bg-[#00B4D8]', 'bg-[#F28C28]', 'bg-[#2A9D8F]', 'bg-[#9D4EDD]', 'bg-[#E63946]'];
-    const getCompanyColor = (companyId: string) => {
-        if (!companyId) return 'bg-slate-400';
-        const hash = companyId.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
-        return companyColors[Math.abs(hash % companyColors.length)];
-    };
-
-    const filteredAppointments = hasRole('ROLE_ADMIN') && companyFilter !== 'all'
-        ? appointments.filter((appt) => appt.companyId === companyFilter)
-        : appointments;
+    const filteredAppointments = appointments.filter((appt) => {
+        const matchesCompany = !hasRole('ROLE_ADMIN') || companyFilter === 'all' || appt.companyId === companyFilter;
+        const matchesVenue = venueFilter === 'all' || appt.venueId === venueFilter;
+        return matchesCompany && matchesVenue;
+    });
 
     const getAppointmentsForDate = (date: Date): Appointment[] => {
         return filteredAppointments.filter((appointment) => {
@@ -430,7 +492,7 @@ export default function AppointmentCalendar() {
         router.replace('/login'); 
     };
 
-    // Visão MENSAL
+    // --- VISÃO MENSAL ---
     const renderMonthView = () => {
         const days = generateCalendarDays();
         return (
@@ -445,17 +507,42 @@ export default function AppointmentCalendar() {
                         {days.map((day, index) => {
                             if (day === null) return <div key={`empty-${index}`} className="h-28 bg-transparent"></div>;
                             const date = new Date(year, month, day);
+                            const dayAppts = getAppointmentsForDate(date);
+
                             return (
-                                <div key={`day-${day}`} className="h-28 border border-slate-200 rounded-xl p-2 hover:border-[#003399] transition-all bg-white cursor-pointer group" onClick={() => handleDateSelect(date)}>
-                                    <button className={`h-8 w-8 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${isToday(date) ? 'bg-[#003399] text-white shadow-md' : isSelected(date) ? 'bg-indigo-50 text-[#003399]' : 'text-slate-600 group-hover:bg-slate-50'}`}>
+                                <div 
+                                    key={`day-${day}`} 
+                                    className="h-28 border border-slate-200 rounded-xl p-2 hover:border-[#003399] transition-all bg-white cursor-pointer group flex flex-col justify-between" 
+                                    onClick={() => {
+                                        handleDateSelect(date);
+                                        handleDayHeaderClick(date);
+                                    }}
+                                >
+                                    <button className={`h-7 w-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${isToday(date) ? 'bg-[#003399] text-white shadow-md' : isSelected(date) ? 'bg-indigo-50 text-[#003399]' : 'text-slate-600 group-hover:bg-slate-50'}`}>
                                         {day}
                                     </button>
-                                    <div className="text-xs mt-2 space-y-1">
-                                        {getAppointmentsForDate(date).slice(0, 2).map((appt) => (
-                                            <div key={appt.schedulingId} className={`rounded-md px-2 py-1 truncate text-[10px] font-bold ${hasRole('ROLE_ADMIN') ? getCompanyColor(appt.companyId) : 'bg-[#003399]'} text-white shadow-sm`} title={appt.name}>
-                                                {appt.name}
+                                    <div className="text-xs mt-1 space-y-1 overflow-hidden">
+                                        {dayAppts.slice(0, 2).map((appt) => {
+                                            const isOwn = isMyCompanyAppointment(appt);
+                                            const venueLabel = getAppointmentVenueLabel(appt);
+                                            const timeRange = formatTimeRange(appt);
+
+                                            return (
+                                                <div 
+                                                    key={appt.schedulingId} 
+                                                    onClick={(e) => { e.stopPropagation(); handleDayHeaderClick(date); }}
+                                                    className={`rounded-md px-2 py-1 truncate text-[10px] font-bold shadow-sm border ${getAppointmentBlockStyle(appt)}`} 
+                                                    title={`${isOwn ? appt.name : 'Ocupado por outra empresa'} | Espaço: ${venueLabel} (${timeRange})`}
+                                                >
+                                                    {isOwn ? `${appt.name} (${venueLabel})` : `${venueLabel} • ${timeRange}`}
+                                                </div>
+                                            );
+                                        })}
+                                        {dayAppts.length > 2 && (
+                                            <div className="text-[10px] font-bold text-[#003399] pl-1 truncate">
+                                                + {dayAppts.length - 2} mais (ver horários)
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -466,7 +553,7 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // Visão SEMANAL
+    // --- VISÃO SEMANAL ---
     const renderWeekView = () => {
         const weekDays = getWeekDays();
         return (
@@ -522,11 +609,24 @@ export default function AppointmentCalendar() {
                                                 const totalInSlot = venueAppointments.length;
                                                 const width = `calc(${100 / totalInSlot}% - 4px)`;
                                                 const left = `calc(${(100 / totalInSlot) * indexInSlot}% + 2px)`;
-                                                const color = hasRole('ROLE_ADMIN') ? getCompanyColor(appointment.companyId) : 'bg-[#003399]';
+                                                const isOwn = isMyCompanyAppointment(appointment);
+                                                const venueLabel = getAppointmentVenueLabel(appointment);
+                                                const timeRange = formatTimeRange(appointment);
                                                 
                                                 return (
-                                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-2 text-white cursor-pointer overflow-hidden ${color} shadow-sm hover:shadow-md transition-shadow border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, width, left, zIndex: 10 + indexInSlot }} title={`${appointment.name}`}>
-                                                        <p className="text-[10px] font-bold truncate leading-tight tracking-wide">{appointment.name}</p>
+                                                    <div 
+                                                        key={appointment.schedulingId} 
+                                                        onClick={() => handleDayHeaderClick(date)}
+                                                        className={`absolute rounded-xl p-2 overflow-hidden shadow-sm transition-shadow border ${getAppointmentBlockStyle(appointment)}`} 
+                                                        style={{ top: `${top}px`, height: `${height}px`, width, left, zIndex: 10 + indexInSlot }} 
+                                                        title={`${isOwn ? appointment.name : 'Ocupado por outra empresa'} | Espaço: ${venueLabel} (${timeRange})`}
+                                                    >
+                                                        <p className="text-[10px] font-bold truncate leading-tight tracking-wide">
+                                                            {isOwn ? appointment.name : `Ocupado: ${venueLabel}`}
+                                                        </p>
+                                                        <p className="text-[9px] opacity-90 truncate mt-0.5 font-medium">
+                                                            {venueLabel} • {timeRange}
+                                                        </p>
                                                     </div>
                                                 );
                                             });
@@ -541,7 +641,7 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // Visão DIÁRIA
+    // --- VISÃO DIÁRIA ---
     const renderDayView = () => {
         const dayAppointments = getAppointmentsForDate(selectedDate);
         return (
@@ -583,11 +683,26 @@ export default function AppointmentCalendar() {
                                 const durationInMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                                 const top = startTimeInMinutes * pixelsPerMinute;
                                 const height = durationInMinutes * pixelsPerMinute;
-                                const color = hasRole('ROLE_ADMIN') ? getCompanyColor(appointment.companyId) : 'bg-[#003399]';
+                                const isOwn = isMyCompanyAppointment(appointment);
+                                const venueLabel = getAppointmentVenueLabel(appointment);
+                                const timeRange = formatTimeRange(appointment);
+
                                 return (
-                                    <div key={appointment.schedulingId} className={`absolute rounded-xl p-3 left-0 right-0 mx-3 text-white cursor-pointer ${color} shadow-md hover:shadow-lg transition-all border border-white/20`} style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }} title={`${appointment.name}`}>
-                                        <div className="text-sm font-bold tracking-wide">{appointment.name}</div>
-                                        <div className="text-[11px] opacity-90 mt-1.5 font-medium">{`${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`} - {` ${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`}</div>
+                                    <div 
+                                        key={appointment.schedulingId} 
+                                        onClick={() => handleDayHeaderClick(selectedDate)}
+                                        className={`absolute rounded-xl p-3 left-0 right-0 mx-3 shadow-md transition-all border ${getAppointmentBlockStyle(appointment)}`} 
+                                        style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }} 
+                                        title={`${isOwn ? appointment.name : 'Ocupado por outra empresa'} | Espaço: ${venueLabel} (${timeRange})`}
+                                    >
+                                        <div className="text-sm font-bold tracking-wide">
+                                            {isOwn 
+                                                ? `${appointment.name} — Espaço: ${venueLabel}` 
+                                                : `Espaço Ocupado: ${venueLabel}`}
+                                        </div>
+                                        <div className="text-[11px] opacity-90 mt-1 font-medium">
+                                            Horário: {timeRange}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -611,7 +726,7 @@ export default function AppointmentCalendar() {
                         <div className="flex flex-col items-center leading-none text-[#003399]">
                             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l8 4 8-4V6l-8-4-8 4z"/><path d="M4 14h8v12"/><path d="M12 2v12l8-4"/></svg>
                         </div>
-                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">brisa</span>
+                        <span className="text-xl font-semibold text-[#003399] tracking-tight hidden sm:block mt-1">Órbita</span>
                     </div>
                 </div>
 
@@ -676,8 +791,30 @@ export default function AppointmentCalendar() {
                         <Button className="w-full bg-[#003399] hover:bg-[#002266] text-white font-bold py-6 rounded-xl shadow-md transition-all flex items-center justify-center mb-4 text-[15px]" onClick={() => setIsAppointmentModalOpen(true)}>
                             <Plus className="h-5 w-5 mr-2" /> Agendar Horário
                         </Button>
+
+                        {/* --- FILTRO POR ESPAÇO (PARA TODOS OS PERFIS) --- */}
+                        <div className="mt-2">
+                            <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">
+                                Filtrar por Espaço
+                            </label>
+                            <Select value={venueFilter} onValueChange={setVenueFilter}>
+                                <SelectTrigger className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 text-slate-700 font-medium rounded-xl h-12">
+                                    <SelectValue placeholder="Todos os espaços" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos os espaços</SelectItem>
+                                    {venues.map((v) => (
+                                        <SelectItem key={v.venueId} value={v.venueId}>
+                                            {v.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* --- FILTRO POR EMPRESA (APENAS ADMIN) --- */}
                         {hasRole('ROLE_ADMIN') && (
-                            <div className="mt-2">
+                            <div className="mt-4">
                                 <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">Filtrar por Empresa</label>
                                 <Select value={companyFilter} onValueChange={setCompanyFilter}>
                                     <SelectTrigger className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 text-slate-700 font-medium rounded-xl h-12">
@@ -736,6 +873,7 @@ export default function AppointmentCalendar() {
                 date={dayModalDate}
                 appointments={dayModalDate ? getAppointmentsForDate(dayModalDate) : []}
                 venues={venues}
+                isAdmin={hasRole('ROLE_ADMIN')}
             />
         </div>
     );

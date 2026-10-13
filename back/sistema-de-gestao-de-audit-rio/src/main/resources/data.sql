@@ -1493,6 +1493,20 @@ INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
 ) VALUES (
+             '09392a59-b093-462f-bcdd-5c639f9c54da', 'Workshop', 'Workshop de Design', '2026-10-19 08:00:00', '2026-10-19 09:00:00', '2026-09-30 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', '5258392d-bdaa-481f-a76d-28fea39d8de8', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-07-06 10:00:00', NULL
+         );
+
+INSERT INTO scheduling (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_auditorium_id, register_request_id, booking_period
+) VALUES (
+             '8151842b-ef33-429d-8702-59d9859eb0d6', 'Workshop', 'Workshop de Design', '2026-10-19 08:00:00', '2026-10-19 09:00:00', '2026-09-30 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', '5258392d-bdaa-481f-a76d-28fea39d8de8', NULL, '09392a59-b093-462f-bcdd-5c639f9c54da', NULL
+         );
+
+INSERT INTO scheduling_register_request (
+    scheduling_id, name, description, start_at, end_at, created_at, created_by,
+    id_company, id_venue, sub_venue_id, status, decided_by, decided_at, booking_period
+) VALUES (
              'e40b9cb3-7102-4c7b-95aa-889658883bf4', 'Workshop', 'Workshop de Design', '2026-10-19 08:00:00', '2026-10-19 09:00:00', '2026-09-30 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'APPROVED', 'fbdc1ac5-d795-44f3-a333-9564775e92fe', '2026-07-06 10:00:00', NULL
          );
 

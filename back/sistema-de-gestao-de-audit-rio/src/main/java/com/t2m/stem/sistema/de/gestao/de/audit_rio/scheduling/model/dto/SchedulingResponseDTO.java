@@ -19,7 +19,8 @@ public record SchedulingResponseDTO(
         String venueName,
         UUID equipmentsId,
         LocalDateTime updateAt,
-        String cnpj
+        String cnpj,
+        boolean isOwnCompany
 ) {
     public static SchedulingResponseDTO from(Scheduling scheduling) {
         return new SchedulingResponseDTO(
@@ -30,14 +31,41 @@ public record SchedulingResponseDTO(
                 scheduling.getEndAt(),
                 scheduling.getCreatedAt(),
                 scheduling.getCreatedBy(),
-                scheduling.getCompany().getCompanyId(),
-                scheduling.getVenue().getVenueId(),
-                scheduling.getVenue().getName(),
+                scheduling.getCompany() != null ? scheduling.getCompany().getCompanyId() : null,
+                scheduling.getVenue() != null ? scheduling.getVenue().getVenueId() : null,
+                scheduling.getVenue() != null ? scheduling.getVenue().getName() : null,
                 scheduling.getEquipments() != null ?
                         scheduling.getEquipments().stream().findFirst().map(Equipment::getEquipmentId).orElse(null)
                         : null,
                 scheduling.getUpdateAt(),
-                scheduling.getCompany().getCnpj()
+                scheduling.getCompany() != null ? scheduling.getCompany().getCnpj() : null,
+                true
+        );
+    }
+
+    public static SchedulingResponseDTO fromWithPrivacy(Scheduling scheduling, UUID loggedCompanyId) {
+        boolean isSameCompany = scheduling.getCompany() != null &&
+                scheduling.getCompany().getCompanyId().equals(loggedCompanyId);
+
+        if (isSameCompany) {
+            return from(scheduling);
+        }
+
+        return new SchedulingResponseDTO(
+                scheduling.getSchedulingId(),
+                "Reservado",
+                null,
+                scheduling.getStartAt(),
+                scheduling.getEndAt(),
+                null,
+                null,
+                null,
+                scheduling.getVenue() != null ? scheduling.getVenue().getVenueId() : null,
+                scheduling.getVenue() != null ? scheduling.getVenue().getName() : null,
+                null,
+                null,
+                null,
+                false
         );
     }
 }
