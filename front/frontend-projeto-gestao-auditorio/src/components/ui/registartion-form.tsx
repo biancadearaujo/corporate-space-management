@@ -20,7 +20,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 interface Company {
@@ -103,8 +103,29 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
 
     const unformatValue = (value: string) => value.replace(/\D/g, '');
 
+    // --- REGRAS DE SEGURANÇA DA SENHA ---
+    const passwordCriteria = {
+        length: formData.password.length >= 8,
+        upper: /[A-Z]/.test(formData.password),
+        lower: /[a-z]/.test(formData.password),
+        number: /[0-9]/.test(formData.password),
+        special: /[^A-Za-z0-9]/.test(formData.password),
+    };
+    
+    // Verifica se todos os critérios foram atendidos
+    const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
+
+    // Validação extra para habilitar o botão
+    const isFormValid = formData.username && formData.email && formData.companyId && isPasswordValid && formData.cpf.length >= 14 && formData.phoneNumber.length >= 14 && formData.rgNumber.length >= 10;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!isPasswordValid) {
+            alert("A senha não cumpre todos os requisitos de segurança.");
+            return;
+        }
+
         setIsLoading(true);
 
         const payload = {
@@ -129,7 +150,6 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
     };
 
     return (
-        // AUMENTADO: p-8 sm:p-10 para dar mais respiro interno
         <div className={cn('bg-white p-8 sm:p-10 rounded-[24px] shadow-xl shadow-slate-200/40 border border-slate-100', className)} {...props}>
             
             <div className="flex flex-col items-center justify-center lg:hidden mb-6">
@@ -148,13 +168,11 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
             </div>
 
             <form onSubmit={handleSubmit}>
-                {/* AUMENTADO: gap-6 para separar melhor as duas colunas */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="username" className="text-xs font-bold text-[#003399] uppercase tracking-wider ml-1">Nome completo</Label>
-                            {/* AUMENTADO: h-11 nas caixas de texto */}
                             <Input
                                 id="username"
                                 placeholder="Seu nome completo"
@@ -200,6 +218,30 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </Button>
                             </div>
+                            
+                            {/* --- INDICADOR DE FORÇA DA SENHA --- */}
+                            {formData.password.length > 0 && (
+                                <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 transition-all animate-in fade-in slide-in-from-top-1">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Requisitos de Segurança</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-2 text-[11px] font-medium">
+                                        <div className={`flex items-center gap-1.5 ${passwordCriteria.length ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {passwordCriteria.length ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 8+ Caracteres
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${passwordCriteria.upper ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {passwordCriteria.upper ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Maiúscula
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${passwordCriteria.lower ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {passwordCriteria.lower ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Minúscula
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${passwordCriteria.number ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {passwordCriteria.number ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Número
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 sm:col-span-2 ${passwordCriteria.special ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                            {passwordCriteria.special ? <CheckCircle2 size={13} /> : <XCircle size={13} />} 1 Caractere Especial (!@#$%&*)
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -299,8 +341,8 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
                 <div className="mt-8 space-y-5">
                     <Button
                         type="submit"
-                        disabled={isLoading}
-                        className="h-12 w-full rounded-xl bg-[#003399] hover:bg-[#002266] text-white font-bold text-base shadow-md transition-all"
+                        disabled={isLoading || !isFormValid}
+                        className="h-12 w-full rounded-xl bg-[#003399] hover:bg-[#002266] text-white font-bold text-base shadow-md transition-all disabled:opacity-50"
                     >
                         {isLoading ? (
                             <>

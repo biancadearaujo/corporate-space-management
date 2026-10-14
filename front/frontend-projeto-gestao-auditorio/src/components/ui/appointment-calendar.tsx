@@ -751,6 +751,9 @@ export default function AppointmentCalendar() {
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
                         <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        {hasRole('ROLE_MANAGER') && (
+                            <Link href="/my-team" className="hover:text-[#003399] transition-colors">Minha Equipe</Link>
+                        )}
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>

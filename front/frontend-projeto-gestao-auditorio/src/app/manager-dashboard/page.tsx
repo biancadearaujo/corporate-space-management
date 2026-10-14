@@ -384,6 +384,7 @@ function ManagerDashboard() {
                         <Link href="/manager-dashboard" className="text-[#003399] font-semibold transition-colors">Painel Geral</Link>
                         <Link href="/calendar" className="hover:text-[#003399] transition-colors">Agendar</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        <Link href="/my-team" className="hover:text-[#003399]">Minha Equipe</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
                     </nav>
                     
