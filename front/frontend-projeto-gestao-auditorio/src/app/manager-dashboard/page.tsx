@@ -506,7 +506,7 @@ function ManagerDashboard() {
                                                             )}
                                                         </h4>
                                                         <div className="flex items-center text-sm text-slate-500 mt-1 font-medium">
-                                                            <span>- {formatDate(req.startAt)}</span>
+                                                            <span>{formatDate(req.startAt)}</span>
                                                             <span className="ml-1.5">{formatTime(req.startAt)} - {formatTime(req.endAt)}</span>
                                                         </div>
                                                         {req.requesterName && <p className="text-xs text-slate-400 mt-1.5 italic">Por: {req.requesterName}</p>}

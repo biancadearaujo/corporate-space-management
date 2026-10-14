@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
@@ -192,6 +192,21 @@ export default function AppointmentCalendar() {
         const hash = companyId.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
         return companyColors[Math.abs(hash % companyColors.length)];
     };
+
+    const searchParams = useSearchParams();
+    const preselectedVenueId = searchParams.get('venue');
+    const shouldOpenModal = searchParams.get('openModal');
+
+    useEffect(() => {
+        if (preselectedVenueId) {
+            setVenueFilter(preselectedVenueId);
+        }
+        if (shouldOpenModal === 'true') {
+            setIsAppointmentModalOpen(true);
+        }
+    }, [preselectedVenueId, shouldOpenModal]);
+
+    
 
     const isMyCompanyAppointment = (appt: Appointment) => {
         if (hasRole('ROLE_ADMIN')) return true;

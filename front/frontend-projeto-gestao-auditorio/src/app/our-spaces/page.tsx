@@ -16,29 +16,65 @@ import {
     Users,
     Coffee,
     ArrowRight,
-    Settings // Adicionado para o botão do Admin
+    Settings,
+    Car,
+    Maximize2,
+    Monitor,
+    Accessibility,
+    Calendar as CalendarIcon,
+    Info,
+    X,
+    CheckCircle2
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
-    CardFooter,
-    CardHeader,
-    CardTitle,
 } from '@/components/ui/card';
 
-interface VenueResponseDTO {
-    id: string; 
+interface EquipmentDTO {
+    id?: string;
     name: string;
-    description: string;
-    image?: string;
-    capacity?: number;
-    features?: string[];
+    conservationStatus?: string;
+    available?: boolean;
 }
 
+interface AccessibilityDTO {
+    accessRamp?: boolean;
+    elevator?: boolean;
+    accessibleBathroom?: boolean;
+    accessibleParking?: boolean;
+    directionalTactileFlooring?: boolean;
+    brailleSignage?: boolean;
+    audioGuidanceSystem?: boolean;
+}
+
+interface VenueResponseDTO {
+    venueId: string; // Corrigido para bater com o DTO do Java
+    id?: string;
+    name: string;
+    description?: string;
+    image?: string;
+    capacity?: number | string;
+    size?: number | string;
+    parking?: boolean;
+    divisible?: boolean;
+    venueType?: string;
+    equipments?: EquipmentDTO[];
+    accessibility?: AccessibilityDTO;
+}
+
+const getVenueTypeLabel = (type?: string) => {
+    switch (type) {
+        case 'AUDITORIUM': return 'Auditório';
+        case 'MEETING_ROOM': return 'Sala de Reunião';
+        case 'COWORKING': return 'Coworking';
+        default: return 'Espaço Corporativo';
+    }
+};
+
 function OurSpacesPage() {
-    // Adicionado o hasRole com 'as any' para evitar erros de tipagem
     const { user, token, logout, hasRole } = useAuth() as any;
     const router = useRouter();
 
@@ -48,6 +84,9 @@ function OurSpacesPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Estado para o Modal de "Raio-X / Detalhes do Espaço"
+    const [selectedSpace, setSelectedSpace] = useState<VenueResponseDTO | null>(null);
 
     useEffect(() => {
         const fetchVenues = async () => {
@@ -64,7 +103,7 @@ function OurSpacesPage() {
                     const data = await response.json();
                     
                     const sortedSpaces = (data.content || []).sort((a: any, b: any) => {
-                        return (a.capacity || 0) - (b.capacity || 0);
+                        return Number(a.capacity || 0) - Number(b.capacity || 0);
                     });
                     
                     setSpaces(sortedSpaces);
@@ -77,7 +116,7 @@ function OurSpacesPage() {
             }
         };
 
-        fetchVenues();
+        if (token) fetchVenues();
     }, [token, currentPage]);
 
     const handleLogout = () => {
@@ -86,7 +125,6 @@ function OurSpacesPage() {
         router.replace('/login'); 
     };
 
-    // Função para direcionar corretamente o Dashboard
     const getDashboardLink = () => {
         if (hasRole('ROLE_ADMIN')) return '/admin-dashboard';
         if (hasRole('ROLE_MANAGER')) return '/manager-dashboard';
@@ -95,7 +133,7 @@ function OurSpacesPage() {
 
     const filteredSpaces = spaces.filter(space => 
         (space.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (space.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (getVenueTypeLabel(space.venueType)).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -120,7 +158,7 @@ function OurSpacesPage() {
                         <Search size={20} className="text-slate-500 mr-3" />
                         <input 
                             type="text" 
-                            placeholder="Buscar no Órbita..." 
+                            placeholder="Buscar por nome ou tipo (ex: Auditório, Vetor)..." 
                             className="bg-transparent border-none outline-none text-slate-700 w-full text-base placeholder-slate-500" 
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
@@ -131,7 +169,6 @@ function OurSpacesPage() {
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href={getDashboardLink()} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
-                        {/* Se for Administrador, pode ocultar o botão "Reservas" ou direcioná-lo para onde fizer sentido */}
                         {!hasRole('ROLE_ADMIN') && (
                             <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
                         )}
@@ -176,7 +213,7 @@ function OurSpacesPage() {
             <main className="flex-1 overflow-y-auto">
                 <div className="max-w-7xl mx-auto p-6 md:p-8">
                     
-                    {/* Banner Estilo Landing Page (Lilás/Pastel) */}
+                    {/* Banner */}
                     <div className="w-full relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#EAE6F5] to-[#FDFBF7] p-10 md:p-14 shadow-sm border border-white mb-10 flex items-center justify-between">
                         <div className="max-w-2xl relative z-10">
                             <div className="inline-flex items-center px-4 py-1.5 bg-white/60 backdrop-blur-sm text-[#6C5B7B] rounded-full text-xs font-bold mb-6 tracking-wide shadow-sm">
@@ -187,10 +224,9 @@ function OurSpacesPage() {
                                 <span className="text-[#C06C84]">menos improviso.</span>
                             </h2>
                             <p className="text-slate-600 text-lg leading-relaxed mb-8 max-w-xl">
-                                Ambientes humanizados e colaborativos pensados para aprimorar seu bem-estar no dia a dia. Estrutura pronta para você atender desde o primeiro momento.
+                                Compare a capacidade, equipamentos e infraestrutura de cada sala antes de fazer o seu agendamento.
                             </p>
                             
-                            {/* Renderização Condicional no Banner */}
                             {hasRole('ROLE_ADMIN') ? (
                                 <Button className="bg-[#355C7D] hover:bg-[#2a4b66] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#355C7D]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
                                     <Link href="/registered-spaces">
@@ -200,7 +236,7 @@ function OurSpacesPage() {
                             ) : (
                                 <Button className="bg-[#C06C84] hover:bg-[#a85a70] text-white px-8 py-6 rounded-2xl font-semibold shadow-lg shadow-[#C06C84]/30 transition-all hover:-translate-y-0.5 text-base" asChild>
                                     <Link href="/calendar">
-                                        Quero reservar agora <ArrowRight className="w-5 h-5 ml-2" />
+                                        Ir para o Calendário Geral <ArrowRight className="w-5 h-5 ml-2" />
                                     </Link>
                                 </Button>
                             )}
@@ -226,12 +262,12 @@ function OurSpacesPage() {
                         ))}
                     </div>
 
-                    {/* Titulo da Seção de Grid */}
+                    {/* Título da Seção de Grid */}
                     <div className="mb-6 flex items-end justify-between">
                         <div>
                             <h3 className="text-2xl font-bold text-slate-800">Nossos Ambientes</h3>
                             <p className="text-slate-500 mt-1 text-sm">
-                                {hasRole('ROLE_ADMIN') ? 'Catálogo visível para os utilizadores finais.' : 'Salas mobiliadas, climatizadas e prontas para uso.'}
+                                Veja os detalhes de cada espaço ou clique em reservar para abrir a agenda específica da sala.
                             </p>
                         </div>
                     </div>
@@ -248,90 +284,107 @@ function OurSpacesPage() {
                                 <p className="text-slate-400 font-medium">Nenhum ambiente encontrado com esse nome.</p>
                             </div>
                         ) : (
-                            filteredSpaces.map((space, index) => (
-                                <Card
-                                    key={space.id || index} 
-                                    className="group border border-slate-200 bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-3"
-                                >
-                                    {/* 1. IMAGEM COM ESPAÇAMENTO UNIFORME */}
-                                    <div className="relative h-[220px] w-full overflow-hidden bg-slate-100 rounded-[16px] shrink-0">
-                                        <Image
-                                            src={space.image || '/placeholder.png'} 
-                                            alt={space.name}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                                        />
-                                        
-                                        {/* Gradiente escuro subtil na base da imagem */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                        
-                                        {/* Etiqueta "Disponível Imediatamente" com efeito Glass */}
-                                        <div className="absolute top-3 left-3 bg-white/70 backdrop-blur-md text-[11px] font-semibold tracking-wide px-3 py-1.5 rounded-full text-slate-800 shadow-sm flex items-center gap-2 border border-white/50">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                                            Disponível Imediatamente
+                            filteredSpaces.map((space, index) => {
+                                const actualId = space.venueId || space.id;
+                                return (
+                                    <Card
+                                        key={actualId || index} 
+                                        className="group border border-slate-200 bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col p-3"
+                                    >
+                                        {/* IMAGEM E BADGE DE TIPO */}
+                                        <div className="relative h-[220px] w-full overflow-hidden bg-slate-100 rounded-[16px] shrink-0">
+                                            <Image
+                                                src={space.image || '/placeholder.png'} 
+                                                alt={space.name}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                                            />
+                                            
+                                            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-[11px] font-bold tracking-wide px-3 py-1.5 rounded-full text-[#003399] shadow-sm flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                {getVenueTypeLabel(space.venueType)}
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    {/* 2. CONTEÚDO ALINHADO COM A IMAGEM */}
-                                    <CardContent className="px-1 pt-4 pb-0 flex-1 flex flex-col">
-                                        <h3 className="text-[22px] font-bold text-[#001738] mb-1.5 group-hover:text-[#003399] transition-colors">
-                                            {space.name}
-                                        </h3>
-                                        <p className="text-[13px] text-slate-600 leading-relaxed mb-4 line-clamp-2">
-                                            {space.description || "Espaço ideal para eventos corporativos, palestras e conferências com infraestrutura de ponta inclusa."}
-                                        </p>
                                         
-                                        {/* Etiqueta de Capacidade Máxima */}
-                                        <div className="flex flex-wrap gap-2 mt-auto mb-4">
-                                            {space.capacity && (
-                                                <span className="inline-flex items-center text-[12px] font-semibold bg-[#F0F4F8] text-[#001738] px-3 py-1.5 rounded-full border border-slate-100">
-                                                    <Users size={14} className="mr-1.5 text-[#003399]" />
-                                                    Capacidade Máxima: {space.capacity} Pessoas
-                                                </span>
+                                        {/* CONTEÚDO INFORMATIVO */}
+                                        <CardContent className="px-2 pt-4 pb-0 flex-1 flex flex-col">
+                                            <h3 className="text-[22px] font-bold text-[#001738] mb-2 group-hover:text-[#003399] transition-colors">
+                                                {space.name}
+                                            </h3>
+                                            
+                                            {/* Badges de Especificações Rápidas */}
+                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                {space.capacity && (
+                                                    <span className="inline-flex items-center text-[11px] font-bold bg-[#F0F4F8] text-[#001738] px-2.5 py-1 rounded-lg border border-slate-200/60">
+                                                        <Users size={13} className="mr-1.5 text-[#003399]" />
+                                                        Até {space.capacity} pessoas
+                                                    </span>
+                                                )}
+                                                {space.size && (
+                                                    <span className="inline-flex items-center text-[11px] font-bold bg-slate-50 text-slate-600 px-2.5 py-1 rounded-lg border border-slate-200/60">
+                                                        <Maximize2 size={13} className="mr-1.5 text-slate-400" />
+                                                        {space.size} m²
+                                                    </span>
+                                                )}
+                                                {space.parking && (
+                                                    <span className="inline-flex items-center text-[11px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-100">
+                                                        <Car size={13} className="mr-1.5" />
+                                                        Estacionamento
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                        
+                                        {/* BOTÕES DE AÇÃO */}
+                                        <div className="px-1 pb-1 pt-2 mt-auto flex gap-2">
+                                            <Button 
+                                                variant="outline"
+                                                onClick={() => setSelectedSpace(space)}
+                                                className="flex-1 rounded-[14px] border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold py-5 text-[13px]"
+                                            >
+                                                <Info size={16} className="mr-1.5 text-[#003399]" />
+                                                Ficha Técnica
+                                            </Button>
+
+                                            {hasRole('ROLE_ADMIN') ? (
+                                                <Button className="flex-1 rounded-[14px] bg-slate-800 hover:bg-slate-900 text-white font-semibold py-5 text-[13px]" asChild>
+                                                    <Link href={`/registered-spaces`}>
+                                                        Editar
+                                                    </Link>
+                                                </Button>
+                                            ) : (
+                                                <Button className="flex-1 rounded-[14px] bg-[#003399] hover:bg-[#002266] text-white font-semibold py-5 shadow-md text-[13px]" asChild>
+                                                    <Link href={`/calendar?venue=${actualId}`}>
+                                                        <CalendarIcon size={15} className="mr-1.5" />
+                                                        Reservar
+                                                    </Link>
+                                                </Button>
                                             )}
                                         </div>
-                                    </CardContent>
-                                    
-                                    {/* 3. BOTÃO SÓLIDO (Condicional) */}
-                                    <div className="px-1 pb-1 pt-0 mt-auto">
-                                        {hasRole('ROLE_ADMIN') ? (
-                                            <Button className="w-full rounded-[14px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors font-bold py-6 shadow-sm text-[14px]" asChild>
-                                                <Link href={`/registered-spaces`}>
-                                                    Editar Espaço no Painel
-                                                </Link>
-                                            </Button>
-                                        ) : (
-                                            <Button className="w-full rounded-[14px] bg-[#003399] hover:bg-[#002266] text-white transition-colors font-medium py-6 shadow-md text-[15px]" asChild>
-                                                <Link href={`/calendar?venue=${space.id}`}>
-                                                    Saber Mais
-                                                </Link>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </Card>
-                            ))
+                                    </Card>
+                                );
+                            })
                         )}
                     </div>
-                    {/* Controlos de Paginação */}
+
+                    {/* Paginação */}
                     {!isLoading && totalPages > 1 && (
                         <div className="w-full flex justify-center items-center gap-4 mt-12 pb-8">
                             <Button 
                                 onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
                                 disabled={currentPage === 0}
-                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md"
+                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300"
                             >
                                 Anterior
                             </Button>
-                            
-                            <span className="text-[15px] font text-[#001738] bg-[#F0F4F8] px-5 py-2.5 rounded-[14px] border border-slate-200 shadow-sm">
+                            <span className="text-[15px] font-medium text-[#001738] bg-[#F0F4F8] px-5 py-2.5 rounded-[14px] border border-slate-200">
                                 Página {currentPage + 1} de {totalPages}
                             </span>
-                            
                             <Button 
                                 onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
                                 disabled={currentPage === totalPages - 1}
-                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-md"
+                                className="bg-[#003399] hover:bg-[#002266] text-white font-medium rounded-[14px] px-6 h-12 transition-colors disabled:bg-slate-300"
                             >
                                 Próxima
                             </Button>
@@ -339,6 +392,97 @@ function OurSpacesPage() {
                     )}
                 </div>
             </main>
+
+            {/* --- MODAL DE FICHA TÉCNICA DO ESPAÇO --- */}
+            {selectedSpace && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="relative h-48 w-full bg-slate-100">
+                            <Image
+                                src={selectedSpace.image || '/placeholder.png'}
+                                alt={selectedSpace.name}
+                                fill
+                                className="object-cover"
+                            />
+                            <button 
+                                onClick={() => setSelectedSpace(null)}
+                                className="absolute top-4 right-4 bg-white/90 hover:bg-white text-slate-700 p-2 rounded-full shadow-md transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                            <div className="absolute bottom-3 left-4 bg-[#003399] text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                                {getVenueTypeLabel(selectedSpace.venueType)}
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800">{selectedSpace.name}</h3>
+                                <div className="flex flex-wrap gap-3 mt-2 text-xs font-semibold text-slate-600">
+                                    <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md"><Users size={14} className="text-[#003399]"/> {selectedSpace.capacity} lugares</span>
+                                    {selectedSpace.size && <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md"><Maximize2 size={14} className="text-[#003399]"/> {selectedSpace.size} m²</span>}
+                                    <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md"><Car size={14} className="text-[#003399]"/> Estacionamento: {selectedSpace.parking ? 'Sim' : 'Não'}</span>
+                                </div>
+                            </div>
+
+                            {/* Equipamentos Disponíveis */}
+                            <div className="border-t border-slate-100 pt-4">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <Monitor size={14} className="text-[#003399]" /> Equipamentos da Sala
+                                </h4>
+                                {selectedSpace.equipments && selectedSpace.equipments.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedSpace.equipments.map((eq, i) => (
+                                            <span key={i} className="text-xs font-semibold bg-indigo-50 text-[#003399] px-3 py-1 rounded-lg border border-indigo-100 flex items-center gap-1">
+                                                <CheckCircle2 size={12} /> {eq.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400">Nenhum equipamento específico listado.</p>
+                                )}
+                            </div>
+
+                            {/* Acessibilidade */}
+                            <div className="border-t border-slate-100 pt-4">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <Accessibility size={14} className="text-[#003399]" /> Recursos de Acessibilidade
+                                </h4>
+                                {selectedSpace.accessibility && Object.values(selectedSpace.accessibility).some(v => v === true) ? (
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 font-medium">
+                                        {selectedSpace.accessibility.accessRamp && <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600"/> Rampa de Acesso</span>}
+                                        {selectedSpace.accessibility.elevator && <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600"/> Elevador</span>}
+                                        {selectedSpace.accessibility.accessibleBathroom && <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600"/> Banheiro Adaptado</span>}
+                                        {selectedSpace.accessibility.brailleSignage && <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600"/> Sinalização em Braile</span>}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400">Sem recursos adicionais cadastrados.</p>
+                                )}
+                            </div>
+
+                            {!hasRole('ROLE_ADMIN') && (
+                                <div className="pt-4 border-t border-slate-100 flex gap-3">
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => setSelectedSpace(null)}
+                                        className="flex-1 rounded-xl py-5 font-semibold"
+                                    >
+                                        Fechar
+                                    </Button>
+                                    <Button 
+                                        className="flex-1 rounded-xl bg-[#003399] hover:bg-[#002266] text-white py-5 font-bold"
+                                        asChild
+                                    >
+                                        <Link href={`/calendar?venue=${selectedSpace.venueId || selectedSpace.id}&openModal=true`}>
+                                            Agendar este Espaço
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

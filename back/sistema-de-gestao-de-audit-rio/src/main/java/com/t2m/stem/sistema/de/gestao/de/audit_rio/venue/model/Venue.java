@@ -59,7 +59,7 @@ public class Venue {
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SubVenue> subVenues = new ArrayList<>();
 
-    @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Equipment> equipments = new ArrayList<>();
 
     @OneToMany(mappedBy = "venue")

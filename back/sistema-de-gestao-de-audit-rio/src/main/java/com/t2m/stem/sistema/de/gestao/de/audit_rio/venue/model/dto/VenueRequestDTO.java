@@ -1,5 +1,6 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.dto;
 
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.equipment.model.dto.EquipmentRequestDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.enums.VenueType;
 import jakarta.validation.constraints.NotNull;
 
@@ -39,6 +40,7 @@ public record VenueRequestDTO(
         @NotNull(message = "Minimum hours to cancel time cannot be null.")
         Integer minimumHoursToCancel,
 
-        List<OpeningHoursDTO> openingHours
+        List<OpeningHoursDTO> openingHours,
+        List<EquipmentRequestDTO> equipments
 ) {
 }

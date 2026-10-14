@@ -2,6 +2,7 @@ package com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.service.admin;
 
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.accessibility.model.Accessibility;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.accessibility.repository.AccessibilityRepository;
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.equipment.model.Equipment;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.errors.NotFoundException;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.user.validator.UserValidator;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.OpeningHours;
@@ -69,6 +70,21 @@ public class AdminVenueService {
         venue.setDivisible(venueDTO.divisible());
         venue.setMaximumMonths(venueDTO.maximumMonths());
         venue.setMinimumHoursToCancel(venueDTO.minimumHoursToCancel());
+
+        venue.setDivisible(venueDTO.divisible());
+        venue.setMaximumMonths(venueDTO.maximumMonths());
+        venue.setMinimumHoursToCancel(venueDTO.minimumHoursToCancel());
+
+        if (venueDTO.equipments() != null && !venueDTO.equipments().isEmpty()) {
+            venueDTO.equipments().forEach(eqDto -> {
+                Equipment equipment = new Equipment();
+                equipment.setName(eqDto.name());
+                equipment.setSerialNumber(eqDto.serialNumber());
+                equipment.setConservationStatus(eqDto.conservationStatus());
+                equipment.setAvailable(eqDto.available());
+                venue.addEquipment(equipment);
+            });
+        }
 
         Venue savedVenue = venueRepository.save(venue);
 
@@ -143,6 +159,23 @@ public class AdminVenueService {
             } else {
                 venue.setOpeningHours(newHoursList);
             }
+        }
+
+        if (venueDTO.equipments() != null) {
+            if (venue.getEquipments() != null) {
+                venue.getEquipments().clear();
+            } else {
+                venue.setEquipments(new ArrayList<>());
+            }
+
+            venueDTO.equipments().forEach(eqDto -> {
+                Equipment equipment = new Equipment();
+                equipment.setName(eqDto.name());
+                equipment.setSerialNumber(eqDto.serialNumber());
+                equipment.setConservationStatus(eqDto.conservationStatus());
+                equipment.setAvailable(eqDto.available());
+                venue.addEquipment(equipment);
+            });
         }
 
         Venue updated = venueRepository.save(venue);

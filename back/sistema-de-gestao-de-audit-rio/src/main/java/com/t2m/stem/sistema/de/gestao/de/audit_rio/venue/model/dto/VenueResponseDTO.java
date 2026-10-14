@@ -1,5 +1,6 @@
 package com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.dto;
 
+import com.t2m.stem.sistema.de.gestao.de.audit_rio.accessibility.model.Accessibility;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.equipment.model.dto.EquipmentSimpleDTO;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.Venue;
 import com.t2m.stem.sistema.de.gestao.de.audit_rio.venue.model.enums.VenueType;
@@ -20,7 +21,8 @@ public record VenueResponseDTO(
         boolean divisible,
         List<OpeningHoursDTO> openingHours,
         List<EquipmentSimpleDTO> equipments,
-        List<SubVenueResponseDTO> subVenues
+        List<SubVenueResponseDTO> subVenuesx,
+        Accessibility accessibility
 ) {
     public static VenueResponseDTO from(Venue venue) {
         return new VenueResponseDTO(
@@ -43,7 +45,8 @@ public record VenueResponseDTO(
                         Collections.emptyList(),
                 venue.getSubVenues() != null ?
                         venue.getSubVenues().stream()
-                                .map(SubVenueResponseDTO::from).toList() : Collections.emptyList()
+                                .map(SubVenueResponseDTO::from).toList() : Collections.emptyList(),
+                venue.getAccessibility()
         );
     }
 }
