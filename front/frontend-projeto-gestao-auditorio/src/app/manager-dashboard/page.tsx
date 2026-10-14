@@ -11,6 +11,33 @@ import {
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
 
+// --- MÁSCARAS DE INPUT ---
+const maskCPF = (value: string) => {
+    return value
+        .replace(/\D/g, '') // Remove tudo o que não é dígito
+        .replace(/(\d{3})(\d)/, '$1.$2') // Coloca um ponto entre o terceiro e o quarto dígitos
+        .replace(/(\d{3})(\d)/, '$1.$2') // Coloca um ponto entre o sexto e o sétimo dígitos
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2') // Coloca um hífen entre o nono e o décimo dígitos
+        .replace(/(-\d{2})\d+?$/, '$1'); // Limita a 14 caracteres totais
+};
+
+const maskRG = (value: string) => {
+    return value
+        .replace(/\D/g, '') 
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+        .replace(/(-\d{1})\d+?$/, '$1'); // Formato padrão XX.XXX.XXX-X
+};
+
+const maskPhone = (value: string) => {
+    return value
+        .replace(/\D/g, '')
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1'); // Formato (XX) XXXXX-XXXX
+};
+
 // --- INTERFACES ---
 interface AdditionalHoursResponseDTO {
     additionalHoursRequestId: string;
@@ -98,7 +125,7 @@ function ManagerDashboard() {
     const [schedulingRequests, setSchedulingRequests] = useState<SchedulingRequestDTO[]>([]);
     const [userRequests, setUserRequests] = useState<UserRegistrationResponseDTO[]>([]);
     const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [venuesMap, setVenuesMap] = useState<Record<string, string>>({}); // NOVO: Mapeamento UUID -> Nome
+    const [venuesMap, setVenuesMap] = useState<Record<string, string>>({});
 
     // Modais e Formulários
     const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
@@ -117,6 +144,16 @@ function ManagerDashboard() {
         setCustomAlert({ isOpen: true, title, message, type });
     };
 
+    // --- REGRAS DE SEGURANÇA DA SENHA ---
+    const passwordCriteria = {
+        length: userForm.password.length >= 8,
+        upper: /[A-Z]/.test(userForm.password),
+        lower: /[a-z]/.test(userForm.password),
+        number: /[0-9]/.test(userForm.password),
+        special: /[^A-Za-z0-9]/.test(userForm.password),
+    };
+    const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
+
     // --- FETCHES ---
     const fetchUserProfile = async () => {
         if (!token) return;
@@ -126,7 +163,6 @@ function ManagerDashboard() {
         } catch (error) { console.error(error); }
     };
 
-    // NOVO: Função para buscar o nome dos espaços
     const fetchVenues = async () => {
         if (!token) return;
         try {
@@ -134,7 +170,6 @@ function ManagerDashboard() {
             if (response.ok) {
                 const data = await response.json();
                 const vMap: Record<string, string> = {};
-                // Assumindo que a resposta paginada está em data.content
                 const venuesList = data.content || data;
                 if (Array.isArray(venuesList)) {
                      venuesList.forEach((v: any) => {
@@ -190,7 +225,7 @@ function ManagerDashboard() {
     useEffect(() => {
         if (!token) return;
         fetchUserProfile();
-        fetchVenues(); // Chama a função para popular o mapa de nomes
+        fetchVenues(); 
         fetchAllData(false); 
         const interval = setInterval(() => fetchAllData(true), 60000); 
         return () => clearInterval(interval);
@@ -287,10 +322,29 @@ function ManagerDashboard() {
 
     const handleSubmitUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // --- VALIDAÇÕES ANTES DE ENVIAR ---
+        if (userForm.cpf.length < 14) {
+            showAlert("Atenção", "Por favor, digite o CPF completo.", "error");
+            return;
+        }
+        if (userForm.phone.length < 14) {
+            showAlert("Atenção", "Por favor, digite o telefone completo com o DDD.", "error");
+            return;
+        }
+        if (!isPasswordValid) {
+            showAlert("Senha Fraca", "A senha escolhida não atende aos critérios de segurança. Verifique a lista.", "error");
+            return;
+        }
+
         try {
             const payload = {
-                username: userForm.name, email: userForm.email, cpf: userForm.cpf, rgNumber: userForm.rg,
-                phoneNumber: userForm.phone, password: userForm.password
+                username: userForm.name, 
+                email: userForm.email, 
+                cpf: userForm.cpf.replace(/\D/g, ''), // Envia apenas números para a API
+                rgNumber: userForm.rg.replace(/\D/g, ''), // Envia apenas números para a API
+                phoneNumber: userForm.phone.replace(/\D/g, ''), // Envia apenas números para a API
+                password: userForm.password
             };
 
             const response = await fetch('http://localhost:8080/manager/users', {
@@ -387,19 +441,15 @@ function ManagerDashboard() {
                             <div className="flex-1 flex items-end justify-between gap-2 px-2 min-h-[220px]">
                                 {!stats ? <p className="w-full text-center text-slate-400 self-center">Carregando dados...</p> : (
                                     stats.monthlyHistory.map((item, i) => {
-                                        // Usa o limite de horas como teto para o gráfico, ou o maior valor do histórico se ultrapassar
                                         const maxVal = Math.max(...stats.monthlyHistory.map(h => h.usedHours), stats.limitHours || 10);
                                         const heightPercent = (item.usedHours / maxVal) * 100;
-                                        // Calcula a percentagem exata deste mês em relação ao limite da cota
                                         const percentOfLimit = stats.limitHours ? Math.round((item.usedHours / stats.limitHours) * 100) : 0;
                                         
                                         return (
                                             <div key={i} className="flex flex-col items-center gap-3 w-full group mt-8">
-                                                {/* overflow-visible permite que o texto flutue fora da barra sem ser cortado */}
                                                 <div className="w-full bg-[#F0F2F5] rounded-t-xl relative h-48 flex items-end overflow-visible">
                                                     <div className="w-full bg-[#003399] rounded-t-xl transition-all duration-700 opacity-80 group-hover:opacity-100" style={{ height: `${heightPercent}%` }}></div>
                                                     
-                                                    {/* Rótulo permanente acima da barra (Horas + Porcentagem) */}
                                                     <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center">
                                                         <span className="text-xs font-bold text-slate-700">{item.usedHours}h</span>
                                                         <span className="text-[9px] font-bold text-[#003399] bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md mt-0.5">
@@ -483,7 +533,6 @@ function ManagerDashboard() {
                                     {activeTab === 'bookings' && (
                                         schedulingRequests.length === 0 ? <p className="text-center text-slate-400 py-10 font-medium">Nenhum agendamento pendente.</p> :
                                         schedulingRequests.map(req => {
-                                            // NOVO: Resolve o nome do espaço consultando o mapa
                                             const resolvedVenueName = req.venueName || req.venue?.name || req.spaceName || venuesMap[req.venueId] || 'Espaço não informado';
                                             return (
                                             <div key={req.schedulingId} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-white rounded-2xl border border-slate-100 hover:shadow-md transition-all gap-4">
@@ -580,7 +629,7 @@ function ManagerDashboard() {
             {/* Novo Usuário */}
             {isUserModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto hide-scrollbar">
                         <button onClick={() => setIsUserModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition"><X size={20} /></button>
                         <div className="mb-6 mt-2">
                             <h3 className="text-2xl font-bold text-slate-800">Novo Colaborador</h3>
@@ -588,34 +637,58 @@ function ManagerDashboard() {
                         </div>
                         <form onSubmit={handleSubmitUser} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Nome Completo</label>
-                                <input type="text" required value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Nome Completo *</label>
+                                <input type="text" required value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="Nome do colaborador" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Email</label>
-                                    <input type="email" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" />
+                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Email *</label>
+                                    <input type="email" required value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="usuario@email.com" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Telefone</label>
-                                    <input type="text" value={userForm.phone} onChange={e => setUserForm({...userForm, phone: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="(XX) XXXXX-XXXX" />
+                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Telefone *</label>
+                                    <input type="text" required value={userForm.phone} onChange={e => setUserForm({...userForm, phone: maskPhone(e.target.value)})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="(XX) XXXXX-XXXX" maxLength={15} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">CPF</label>
-                                    <input type="text" required value={userForm.cpf} onChange={e => setUserForm({...userForm, cpf: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="Só números" />
+                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">CPF *</label>
+                                    <input type="text" required value={userForm.cpf} onChange={e => setUserForm({...userForm, cpf: maskCPF(e.target.value)})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="000.000.000-00" maxLength={14} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">RG</label>
-                                    <input type="text" required value={userForm.rg} onChange={e => setUserForm({...userForm, rg: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" />
+                                    <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">RG *</label>
+                                    <input type="text" required value={userForm.rg} onChange={e => setUserForm({...userForm, rg: maskRG(e.target.value)})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="XX.XXX.XXX-X" maxLength={12} />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Senha Inicial</label>
-                                <input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" />
+                                <label className="block text-xs font-bold text-[#003399] uppercase tracking-wider mb-2">Senha Inicial *</label>
+                                <input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:border-[#003399] outline-none transition" placeholder="Crie uma senha forte" />
+                                
+                                {/* --- INDICADOR DE FORÇA DA SENHA --- */}
+                                {userForm.password.length > 0 && (
+                                    <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 transition-all animate-in fade-in slide-in-from-top-1">
+                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Requisitos de Segurança</p>
+                                        <div className="grid grid-cols-2 gap-2 text-xs font-medium">
+                                            <div className={`flex items-center gap-1.5 ${passwordCriteria.length ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {passwordCriteria.length ? <CheckCircle2 size={14} /> : <XCircle size={14} />} 8+ Caracteres
+                                            </div>
+                                            <div className={`flex items-center gap-1.5 ${passwordCriteria.upper ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {passwordCriteria.upper ? <CheckCircle2 size={14} /> : <XCircle size={14} />} 1 Letra Maiúscula
+                                            </div>
+                                            <div className={`flex items-center gap-1.5 ${passwordCriteria.lower ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {passwordCriteria.lower ? <CheckCircle2 size={14} /> : <XCircle size={14} />} 1 Letra Minúscula
+                                            </div>
+                                            <div className={`flex items-center gap-1.5 ${passwordCriteria.number ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {passwordCriteria.number ? <CheckCircle2 size={14} /> : <XCircle size={14} />} 1 Número
+                                            </div>
+                                            <div className={`flex items-center gap-1.5 col-span-2 ${passwordCriteria.special ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {passwordCriteria.special ? <CheckCircle2 size={14} /> : <XCircle size={14} />} 1 Caractere Especial (!@#$%&*)
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <button type="submit" className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md mt-4 flex items-center justify-center gap-2"><UserPlus size={18}/> Cadastrar Conta</button>
+                            <button type="submit" className="w-full py-3.5 rounded-xl bg-[#003399] text-white font-bold hover:bg-[#002266] transition shadow-md mt-4 flex items-center justify-center gap-2"><UserPlus size={18}/> Enviar Cadastro para Aprovação</button>
                         </form>
                     </div>
                 </div>
