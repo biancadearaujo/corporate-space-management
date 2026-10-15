@@ -138,7 +138,6 @@ const DayAppointmentsModal = ({ isOpen, onClose, date, appointments, venues, isA
                                             {parseApiDate(appt.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(appt.endAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
 
-                                        {/* Exibe a descrição apenas se for da própria empresa ou Admin */}
                                         {isOwn && appt.description && (
                                             <p className="text-xs text-slate-500 mt-1.5 italic">
                                                 "{appt.description}"
@@ -166,6 +165,14 @@ export default function AppointmentCalendar() {
     const { user, hasRole, token, logout } = useAuth();
     const router = useRouter(); 
     
+    // --- BLOQUEIO DE ACESSO PARA ADMIN ---
+    useEffect(() => {
+        if (hasRole('ROLE_ADMIN')) {
+            toast.error('Acesso negado: Administradores não podem acessar o calendário de reservas.');
+            router.replace('/admin-dashboard');
+        }
+    }, [hasRole, router]);
+
     const currentDate = new Date();
     const [month, setMonth] = useState(currentDate.getMonth());
     const [year, setYear] = useState(currentDate.getFullYear());
@@ -206,12 +213,10 @@ export default function AppointmentCalendar() {
         }
     }, [preselectedVenueId, shouldOpenModal]);
 
-    
-
     const isMyCompanyAppointment = (appt: Appointment) => {
         if (hasRole('ROLE_ADMIN')) return true;
         if (appt.isOwnCompany !== undefined) return appt.isOwnCompany;
-        return appt.name !== 'Reservado'; // Fallback de segurança
+        return appt.name !== 'Reservado'; 
     };
 
     const getAppointmentVenueLabel = (appt: Appointment) => {
@@ -233,9 +238,9 @@ export default function AppointmentCalendar() {
             return `${getCompanyColor(appt.companyId)} text-white cursor-pointer hover:shadow-md`;
         }
         if (isMyCompanyAppointment(appt)) {
-            return 'bg-[#003399] text-white cursor-pointer hover:shadow-md'; // Azul Órbita para a própria empresa
+            return 'bg-[#003399] text-white cursor-pointer hover:shadow-md'; 
         }
-        return 'bg-slate-200 text-slate-700 cursor-pointer border-slate-300 hover:bg-slate-300/80'; // Cinzento neutro para outras empresas
+        return 'bg-slate-200 text-slate-700 cursor-pointer border-slate-300 hover:bg-slate-300/80'; 
     };
 
     const userRoleNormalized: 'COLLABORATOR' | 'MANAGER' | 'ADMIN' | null = 
@@ -507,7 +512,11 @@ export default function AppointmentCalendar() {
         router.replace('/login'); 
     };
 
-    // --- VISÃO MENSAL ---
+    // Impede a renderização enquanto redireciona o admin
+    if (hasRole('ROLE_ADMIN')) {
+        return null;
+    }
+
     const renderMonthView = () => {
         const days = generateCalendarDays();
         return (
@@ -568,7 +577,6 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // --- VISÃO SEMANAL ---
     const renderWeekView = () => {
         const weekDays = getWeekDays();
         return (
@@ -616,7 +624,7 @@ export default function AppointmentCalendar() {
                                             return venueAppointments.map((appointment, indexInSlot) => {
                                                 const start = parseApiDate(appointment.startAt);
                                                 const end = parseApiDate(appointment.endAt);
-                                                const pixelsPerMinute = 56 / 30; // h-14 = 56px
+                                                const pixelsPerMinute = 56 / 30;
                                                 const startTimeInMinutes = start.getHours() * 60 + start.getMinutes();
                                                 const durationInMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
                                                 const top = startTimeInMinutes * pixelsPerMinute;
@@ -656,7 +664,6 @@ export default function AppointmentCalendar() {
         );
     };
 
-    // --- VISÃO DIÁRIA ---
     const renderDayView = () => {
         const dayAppointments = getAppointmentsForDate(selectedDate);
         return (
@@ -730,9 +737,7 @@ export default function AppointmentCalendar() {
 
     return (
         <div className="flex flex-col h-screen bg-[#FAFAFA] font-sans overflow-hidden">
-            {/* --- TOP NAVBAR --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50 shrink-0">
-                {/* Lado Esquerdo: Logo e Menu Mobile */}
                 <div className="flex items-center gap-4 md:gap-6">
                     <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden">
                         <Menu size={28} strokeWidth={1.5} />
@@ -745,11 +750,10 @@ export default function AppointmentCalendar() {
                     </div>
                 </div>
 
-                {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
-                        <Link href="#" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
+                        <Link href="/calendar" className="text-[#003399] font-semibold transition-colors">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         {hasRole('ROLE_MANAGER') && (
                             <Link href="/my-team" className="hover:text-[#003399] transition-colors">Minha Equipe</Link>
@@ -770,13 +774,15 @@ export default function AppointmentCalendar() {
                 </div>
             </header>
 
-            {/* --- MENU MOBILE --- */}
             {isMobileMenuOpen && (
                 <div className="xl:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-4 shadow-lg absolute w-full z-40 top-[72px]">
                     <nav className="flex flex-col gap-4 text-base font-medium text-slate-600">
                         <Link href="#" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleDashboardClick(); }} className="hover:text-[#003399]">Dashboard</Link>
-                        <Link href="#" className="text-[#003399] font-semibold">Reservas</Link>
+                        <Link href="/calendar" className="text-[#003399] font-semibold">Reservas</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399]">Espaços</Link>
+                        {hasRole('ROLE_MANAGER') && (
+                            <Link href="/my-team" className="hover:text-[#003399]">Minha Equipe</Link>
+                        )}
                         <Link href="/profile" className="hover:text-[#003399]">Perfil</Link>
                     </nav>
                 </div>
@@ -810,7 +816,6 @@ export default function AppointmentCalendar() {
                             <Plus className="h-5 w-5 mr-2" /> Agendar Horário
                         </Button>
 
-                        {/* --- FILTRO POR ESPAÇO (PARA TODOS OS PERFIS) --- */}
                         <div className="mt-2">
                             <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">
                                 Filtrar por Espaço
@@ -829,22 +834,6 @@ export default function AppointmentCalendar() {
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        {/* --- FILTRO POR EMPRESA (APENAS ADMIN) --- */}
-                        {hasRole('ROLE_ADMIN') && (
-                            <div className="mt-4">
-                                <label className="text-[11px] font-bold text-slate-500 mb-2 block uppercase tracking-wider">Filtrar por Empresa</label>
-                                <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                                    <SelectTrigger className="w-full bg-[#F0F2F5] border-transparent focus:bg-white focus:border-[#003399] focus:ring-2 focus:ring-[#003399]/20 text-slate-700 font-medium rounded-xl h-12">
-                                        <SelectValue placeholder="Todas" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todas as empresas</SelectItem>
-                                        {allCompanies.map((company) => (<SelectItem key={company.id} value={company.id}>{company.cnpj}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
                     </div>
                 </div>
 
