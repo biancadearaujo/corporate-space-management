@@ -20,7 +20,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, EyeOff, Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
 import Link from 'next/link';
 
 interface Company {
@@ -44,6 +44,19 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
+    // --- ESTADO DO ALERTA PERSONALIZADO ---
+    const [customAlert, setCustomAlert] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'success' as 'success' | 'error' | 'info',
+        onConfirm: null as (() => void) | null
+    });
+
+    const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info', onConfirm: (() => void) | null = null) => {
+        setCustomAlert({ isOpen: true, title, message, type, onConfirm });
+    };
+
     const [formData, setFormData] = useState<RegistrationFormData>({
         username: '',
         email: '',
@@ -112,17 +125,15 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
         special: /[^A-Za-z0-9]/.test(formData.password),
     };
     
-    // Verifica se todos os critérios foram atendidos
     const isPasswordValid = Object.values(passwordCriteria).every(Boolean);
 
-    // Validação extra para habilitar o botão
     const isFormValid = formData.username && formData.email && formData.companyId && isPasswordValid && formData.cpf.length >= 14 && formData.phoneNumber.length >= 14 && formData.rgNumber.length >= 10;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!isPasswordValid) {
-            alert("A senha não cumpre todos os requisitos de segurança.");
+            showAlert("Senha Inválida", "A sua senha não cumpre todos os requisitos de segurança. Verifique as exigências e tente novamente.", "error");
             return;
         }
 
@@ -138,12 +149,19 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
 
         try {
             const response = await axios.post('http://localhost:8080/users', payload);
-            console.log('Sucesso:', response.data);
-            alert('Solicitação enviada com sucesso! Aguarde aprovação.');
-            window.location.href = '/login';
-        } catch (error) {
+            
+            // Exibe o modal de sucesso e redireciona ao confirmar
+            showAlert(
+                "Cadastro Solicitado!", 
+                "A sua solicitação foi enviada com sucesso. Aguarde a aprovação do seu gestor para acessar o sistema.", 
+                "success", 
+                () => { window.location.href = '/login'; }
+            );
+
+        } catch (error: any) {
             console.error('Erro:', error);
-            alert('Erro ao realizar cadastro. Verifique os dados.');
+            const errorMsg = error.response?.data?.message || 'Erro ao realizar o cadastro. Verifique se o E-mail ou CPF já estão cadastrados.';
+            showAlert("Falha no Cadastro", errorMsg, "error");
         } finally {
             setIsLoading(false);
         }
@@ -219,7 +237,6 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
                                 </Button>
                             </div>
                             
-                            {/* --- INDICADOR DE FORÇA DA SENHA --- */}
                             {formData.password.length > 0 && (
                                 <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 transition-all animate-in fade-in slide-in-from-top-1">
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Requisitos de Segurança</p>
@@ -361,6 +378,32 @@ export function RegistrationForm({ className, ...props }: React.ComponentProps<'
                     </div>
                 </div>
             </form>
+
+            {/* --- COMPONENTE DE ALERTA PERSONALIZADO --- */}
+            {customAlert.isOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-center mb-4">
+                            {customAlert.type === 'success' && <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center"><CheckCircle2 size={32} /></div>}
+                            {customAlert.type === 'error' && <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><XCircle size={32} /></div>}
+                            {customAlert.type === 'info' && <div className="w-16 h-16 bg-blue-50 text-[#003399] rounded-full flex items-center justify-center"><Info size={32} /></div>}
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">{customAlert.title}</h3>
+                        <p className="text-sm text-slate-500 mb-8 leading-relaxed whitespace-pre-line">{customAlert.message}</p>
+                        
+                        <button 
+                            onClick={() => {
+                                setCustomAlert({ ...customAlert, isOpen: false });
+                                if (customAlert.onConfirm) customAlert.onConfirm();
+                            }} 
+                            className={`w-full py-3.5 text-white rounded-xl font-bold transition shadow-md ${customAlert.type === 'error' ? 'bg-slate-800 hover:bg-slate-900' : 'bg-[#003399] hover:bg-[#002266]'}`}
+                        >
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
