@@ -435,8 +435,30 @@ function ProfilePage() {
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
-                        <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
-                        <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
+                        {hasRole('ROLE_ADMIN') && (
+                            <Link href="/registered-companies" className="hover:text-[#003399] transition-colors">Empresas</Link>
+                        )}
+                        {hasRole('ROLE_MANAGER') && (
+                            <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        )}
+                        {hasRole('ROLE_COLLABORATOR') && (
+                            <Link href="/calendar" className="hover:text-[#003399] transition-colors">Reservas</Link>
+                        )}
+                        {hasRole('ROLE_ADMIN') && (
+                            <Link href="/register-manager" className="hover:text-[#003399] transition-colors">Gestores</Link>
+                        )}
+                        {hasRole('ROLE_MANAGER') && (
+                            <Link href="/our-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
+                        )}
+                        {hasRole('ROLE_COLLABORATOR') && (
+                            <Link href="/our-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
+                        )}
+                        {hasRole('ROLE_ADMIN') && (
+                            <Link href="/registered-spaces" className="text-[#003399] font-semibold transition-colors">Espaços</Link>
+                        )}
+                        {hasRole('ROLE_ADMIN') && (
+                            <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Catálago</Link>
+                        )}
                         {hasRole('ROLE_MANAGER') && (
                             <Link href="/my-team" className="hover:text-[#003399] transition-colors">Minha Equipe</Link>
                         )}
