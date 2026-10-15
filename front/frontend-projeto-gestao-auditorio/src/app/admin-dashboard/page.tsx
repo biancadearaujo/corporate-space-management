@@ -343,6 +343,7 @@ function AdminDashboard() {
                         <Link href="/registered-spaces" className="hover:text-[#003399] transition-colors">Espaços</Link>
                         <Link href="/our-spaces" className="hover:text-[#003399] transition-colors">Catálogo</Link>
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
+                        <Link href="/about-us" className="hover:text-[#003399] font-semibold transition-colors">Sobre</Link>
                     </nav>
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
                     <div className="flex items-center gap-5">

@@ -194,6 +194,7 @@ function OurSpacesPage() {
                             <Link href="/my-team" className="hover:text-[#003399] transition-colors">Minha Equipe</Link>
                         )}
                         <Link href="/profile" className="hover:text-[#003399] transition-colors">Perfil</Link>
+                        <Link href="/about-us" className="hover:text-[#003399] font-semibold transition-colors">Sobre</Link>
                     </nav>
                     
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
