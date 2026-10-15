@@ -65,7 +65,6 @@ public class UserApprovalService {
         return UserResponseDTO.from(created);
     }
 
-    //TODO: Testar.
     @Transactional
     public UserRejectedResponseDTO rejectUser(UUID id, UserRejectedRequestDTO userRejectedRequestDTO) {
         User currentUsername = userValidator.getAuthenticatedUser();
@@ -98,6 +97,15 @@ public class UserApprovalService {
         userRegistrationRequest.setDecidedAt(LocalDateTime.now());
         userRegistrationRequest.setManagerId(userValidator.getAuthenticatedUser().getUserId());
         userRegistrationRequest.setRejectionReason(userRejectedRequestDTO.rejectionReason());
+
+        String uniqueSuffix = "_REJECTED_" + UUID.randomUUID().toString().substring(0, 8);
+
+        if (userRegistrationRequest.getEmail() != null) {
+            userRegistrationRequest.setEmail(userRegistrationRequest.getEmail() + uniqueSuffix);
+        }
+        if (userRegistrationRequest.getCpf() != null) {
+            userRegistrationRequest.setCpf("REJ-" + userRegistrationRequest.getCpf());
+        }
 
         userRegistrationRequestRepository.save(userRegistrationRequest);
         UserRejectedRequest rejected = userRejectedRequestRepository.save(userRejectedRequest);
