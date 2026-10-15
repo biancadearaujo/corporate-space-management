@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
     MapPin, Edit2, Save, X, Mail, Phone, Building2, Briefcase, 
     ShieldCheck, KeyRound, Building, ArrowRightLeft, Trash2, 
-    AlertTriangle, Search, Bell, Menu, User, Clock, CheckCircle2, XCircle, Info, Image as ImageIcon // <-- Importar ImageIcon
+    AlertTriangle, Search, Bell, Menu, User, Clock, CheckCircle2, XCircle, Info, Image as ImageIcon
 } from 'lucide-react';
 import { withAuth } from '@/components/withAuth';
 import Link from 'next/link';
@@ -56,24 +56,19 @@ function ProfilePage() {
     const [isFetching, setIsFetching] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
-    // Estados dos Modais
     const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     
-    // Estados de Ação
     const [isRequestingNewCompany, setIsRequestingNewCompany] = useState(false);
     const [isExitingCompany, setIsExitingCompany] = useState(false);
     const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-    // Estados de Notificação e Busca
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
 
-    // Campos dos Formulários
     const [newCompanyCnpj, setNewCompanyCnpj] = useState('');
     const [newCompanyEmail, setNewCompanyEmail] = useState('');
     
-    // Estado para Troca de Senha
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
 
     // --- ESTADOS DE DADOS ---
@@ -86,14 +81,12 @@ function ProfilePage() {
         approvedHours: 0
     });
 
-    // Função para obter o prefixo correto do endpoint consoante a Role do utilizador
     const getApiPrefix = () => {
         if (hasRole('ROLE_ADMIN')) return 'http://localhost:8080/admin';
         if (hasRole('ROLE_MANAGER')) return 'http://localhost:8080/manager';
         return 'http://localhost:8080/collaborator';
     };
 
-    // --- ESTADOS DO ALERTA PERSONALIZADO ---
     const [customAlert, setCustomAlert] = useState({
         isOpen: false,
         title: '',
@@ -164,6 +157,7 @@ function ProfilePage() {
         return () => clearInterval(interval);
     }, [token]);
 
+    // --- 4. BUSCA DOS DADOS DO PERFIL E ESTATÍSTICAS ---
     useEffect(() => {
         const fetchAllData = async () => {
             if (!token) return;
@@ -171,59 +165,128 @@ function ProfilePage() {
             try {
                 const headers = { 'Authorization': `Bearer ${token}` };
                 const prefix = getApiPrefix();
+                const isManager = hasRole('ROLE_MANAGER');
+                
+                let currentUserData: any = {};
 
-                // 1. Busca os Dados do Perfil de forma independente
+                // 1. Busca os Dados do Perfil
                 try {
                     const profileRes = await fetch(`${prefix}/user/me`, { headers });
                     if (profileRes.ok) {
-                        const data = await profileRes.json();
-                        
+                        currentUserData = await profileRes.json();
                         let empresa = 'Sem Empresa';
-                        if (data.companyName) empresa = data.companyName;
-                        else if (data.company && data.company.name) empresa = data.company.name;
-                        else if (typeof data.company === 'string') empresa = data.company;
+                        if (currentUserData.companyName) empresa = currentUserData.companyName;
+                        else if (currentUserData.company && currentUserData.company.name) empresa = currentUserData.company.name;
+                        else if (typeof currentUserData.company === 'string') empresa = currentUserData.company;
 
                         setFormData({
-                            name: data.name || data.username || '',
-                            email: data.email || '',
-                            phone: formatPhoneNumber(data.phone || data.phoneNumber || ''),
-                            role: translateRole(data.role || ''),
+                            name: currentUserData.name || currentUserData.username || '',
+                            email: currentUserData.email || '',
+                            phone: formatPhoneNumber(currentUserData.phone || currentUserData.phoneNumber || ''),
+                            role: translateRole(currentUserData.role || ''),
                             company: empresa, 
-                            department: data.department || '',
-                            avatar: data.avatarUrl || data.photoUrl || '' // <-- avatar preenchido
+                            department: currentUserData.department || '',
+                            avatar: currentUserData.avatarUrl || currentUserData.photoUrl || ''
                         });
                     }
-                } catch (e) {
-                    console.error("Erro ao buscar perfil:", e);
-                }
+                } catch (e) { console.error("Erro ao buscar perfil:", e); }
                 
-                // 2. Busca as Reservas de forma independente
+                // --- Função Auxiliar CORRIGIDA: Match de UUIDs ---
+                const isMyOwnRequest = (r: any) => {
+                    if (!currentUserData) return true;
+                    
+                    // Nomes
+                    const authorName = r.requesterName || r.username;
+                    // IDs (Aqui está o segredo: r.createdBy é o UUID que vem do Java!)
+                    const authorId = r.createdBy || r.requesterId || r.userId || r.authorId;
+                    
+                    const myId = currentUserData.userId || currentUserData.id;
+                    
+                    // Compara primariamente por ID
+                    if (authorId && myId) {
+                        return authorId === myId;
+                    }
+                    
+                    // Fallback para nomes caso o backend não mande ID
+                    if (authorName) {
+                        return authorName === currentUserData.username || 
+                               authorName === currentUserData.name || 
+                               authorName === currentUserData.email;
+                    }
+                    
+                    return false;
+                };
+
+                // 2. Busca as Reservas
                 try {
-                    const schedulingRes = await fetch(`${prefix}/unified-scheduling`, { headers });
+                    // Usamos a rota definitiva para Gestor
+                    const schedulingEndpoint = isManager 
+                        ? 'http://localhost:8080/manager/scheduling?size=1000'
+                        : 'http://localhost:8080/collaborator/unified-scheduling?size=1000';
+
+                    const schedulingRes = await fetch(schedulingEndpoint, { headers });
                     if (schedulingRes.ok) {
                         const data = await schedulingRes.json();
                         const content = data.content || data || [];
-                        const approvedReservations = content.filter((r: any) => r.status === 'APPROVED' || r.status === 'CONFIRMED');
-                        setStats(prev => ({ ...prev, reservationsCount: approvedReservations.length }));
-                    }
-                } catch (e) {
-                    console.error("Endpoint de reservas não encontrado para este perfil.");
-                }
+                        
+                        const validReservations = content.filter((r: any) => 
+                            r.status !== 'CANCELLED' && r.status !== 'REJECTED'
+                        );
+                        
+                        let myReservationsCount = 0;
+                        if (isManager) {
+                            myReservationsCount = validReservations.filter(isMyOwnRequest).length;
+                        } else {
+                            myReservationsCount = validReservations.length;
+                        }
 
-                // 3. Busca as Horas de forma independente
+                        setStats(prev => ({ ...prev, reservationsCount: myReservationsCount }));
+                    }
+                } catch (e) { console.error("Erro reservas:", e); }
+
+                // 3. Busca as Horas Adicionais
                 try {
-                    const hoursRes = await fetch(`${prefix}/hours-requests`, { headers });
+                    let hoursEndpoint = 'http://localhost:8080/collaborator/hours-requests?size=1000';
+                    
+                    if (isManager) {
+                        const userId = currentUserData.userId || currentUserData.id;
+                        if (userId) {
+                            hoursEndpoint = `http://localhost:8080/manager/additional-hours-request/user/${userId}`;
+                        } else {
+                            hoursEndpoint = 'http://localhost:8080/manager/additional-hours-request?size=1000';
+                        }
+                    }
+
+                    const hoursRes = await fetch(hoursEndpoint, { headers });
                     if (hoursRes.ok) {
                         const data = await hoursRes.json();
                         const content = data.content || data || [];
-                        const totalHours = content
-                            .filter((r: any) => r.status === 'APPROVED')
+                        
+                        let myHours = content;
+                        if (isManager && !hoursEndpoint.includes('/user/')) {
+                            myHours = content.filter(isMyOwnRequest);
+                        }
+
+                        const totalHours = myHours
+                            .filter((r: any) => r.status === 'APPROVED' || r.status === 'APPROVED_BY_MANAGER' || !r.status)
                             .reduce((acc: number, curr: any) => acc + (Number(curr.requestedHours || curr.hours) || 0), 0);
+                        
                         setStats(prev => ({ ...prev, approvedHours: totalHours }));
+                    } else {
+                        const hoursResFallback = await fetch(`${prefix}/hours-requests?size=1000`, { headers });
+                        if (hoursResFallback.ok) {
+                            const dataFb = await hoursResFallback.json();
+                            const contentFb = dataFb.content || dataFb || [];
+                            
+                            const myPersonalHoursFb = contentFb.filter(isMyOwnRequest);
+                            const totalHoursFb = myPersonalHoursFb
+                                .filter((r: any) => r.status === 'APPROVED' || !r.status)
+                                .reduce((acc: number, curr: any) => acc + (Number(curr.requestedHours || curr.hours) || 0), 0);
+                            
+                            setStats(prev => ({ ...prev, approvedHours: totalHoursFb }));
+                        }
                     }
-                } catch (e) {
-                    console.error("Endpoint de horas não encontrado para este perfil.");
-                }
+                } catch (e) { console.error("Erro horas:", e); }
 
             } finally {
                 setIsFetching(false);
@@ -231,7 +294,7 @@ function ProfilePage() {
         };
 
         fetchAllData();
-    }, [token]);
+    }, [token, hasRole]);
 
     // --- 5. HANDLERS GERAIS ---
     const handleLogout = () => {
@@ -263,12 +326,7 @@ function ProfilePage() {
             const response = await fetch(`${getApiPrefix()}/user/me`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                // <-- CORREÇÃO: Enviamos "image" para bater certo com o DTO do Java
-                body: JSON.stringify({ 
-                    name: formData.name, 
-                    phoneNumber: formData.phone,
-                    image: formData.avatar 
-                })
+                body: JSON.stringify({ name: formData.name, phoneNumber: formData.phone, image: formData.avatar })
             });
 
             if (response.ok) {
@@ -279,7 +337,6 @@ function ProfilePage() {
                 showAlert("Erro ao Salvar", errorData.message || 'Verifique os dados informados.', "error");
             }
         } catch (error) { 
-            console.error(error); 
             showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
         } finally { 
             setIsLoading(false); 
@@ -289,18 +346,12 @@ function ProfilePage() {
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (passwords.new !== passwords.confirm) {
-            showAlert("Senhas Diferentes", "A nova senha e a confirmação não coincidem.", "error");
-            return;
-        }
-        if (passwords.new.length < 6) {
-            showAlert("Senha Curta", "A nova senha deve ter pelo menos 6 caracteres.", "error");
-            return;
-        }
+        if (passwords.new !== passwords.confirm) { showAlert("Senhas Diferentes", "A nova senha e a confirmação não coincidem.", "error"); return; }
+        if (passwords.new.length < 6) { showAlert("Senha Curta", "A nova senha deve ter pelo menos 6 caracteres.", "error"); return; }
 
         setIsSavingPassword(true);
         try {
-            const response = await fetch('http://localhost:8080/collaborator/user/change-password', {
+            const response = await fetch(`${getApiPrefix()}/user/change-password`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new })
@@ -314,12 +365,7 @@ function ProfilePage() {
                 const errorText = await response.text(); 
                 showAlert("Erro", errorText || "Senha atual incorreta ou erro no servidor.", "error");
             }
-        } catch (error) {
-            console.error(error);
-            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error");
-        } finally {
-            setIsSavingPassword(false);
-        }
+        } catch (error) { showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); } finally { setIsSavingPassword(false); }
     };
 
     const handleRequestNewCompany = async (e: React.FormEvent) => {
@@ -328,18 +374,14 @@ function ProfilePage() {
         
         setIsRequestingNewCompany(true);
         try {
-            const response = await fetch('http://localhost:8080/collaborator/request-new-company', {
+            const response = await fetch(`${getApiPrefix()}/request-new-company`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cnpj: newCompanyCnpj, newEmail: newCompanyEmail })
             });
 
             if (response.ok) {
-                showAlert(
-                    "Solicitação Enviada", 
-                    "Quando aprovada pelo Gestor, poderá fazer login utilizando o novo e-mail informado.", 
-                    "success"
-                );
+                showAlert("Solicitação Enviada", "Quando aprovada pelo Gestor, poderá fazer login utilizando o novo e-mail informado.", "success");
                 setIsCompanyModalOpen(false);
                 setNewCompanyCnpj('');
                 setNewCompanyEmail('');
@@ -347,12 +389,7 @@ function ProfilePage() {
                 const errorText = await response.text();
                 showAlert("Erro na Solicitação", errorText, "error");
             }
-        } catch (error) { 
-            console.error(error); 
-            showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
-        } finally { 
-            setIsRequestingNewCompany(false); 
-        }
+        } catch (error) { showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); } finally { setIsRequestingNewCompany(false); }
     };
 
     const handleExitCompany = () => {
@@ -362,11 +399,10 @@ function ProfilePage() {
             async () => {
                 setIsExitingCompany(true);
                 try {
-                    const response = await fetch('http://localhost:8080/collaborator/company/exit', {
+                    const response = await fetch(`${getApiPrefix()}/company/exit`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    
                     if (response.ok || response.status === 204) {
                         showAlert("Conta Encerrada", "Você saiu da empresa e a sua conta foi encerrada.", "success");
                         setTimeout(() => handleLogout(), 2500); 
@@ -374,12 +410,7 @@ function ProfilePage() {
                         const msg = await response.text();
                         showAlert("Erro ao Sair", msg, "error");
                     }
-                } catch (error) { 
-                    console.error(error); 
-                    showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); 
-                } finally { 
-                    setIsExitingCompany(false); 
-                }
+                } catch (error) { showAlert("Erro de Conexão", "Não foi possível conectar ao servidor.", "error"); } finally { setIsExitingCompany(false); }
             }
         );
     };
@@ -388,10 +419,7 @@ function ProfilePage() {
     return (
         <div className="min-h-screen bg-[#FAFAFA] font-sans text-slate-800 flex flex-col">
             
-            {/* --- TOP NAVBAR PADRONIZADO (Sem barra de pesquisa) --- */}
             <header className="bg-white h-[72px] border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-50">
-                
-                {/* Lado Esquerdo: Logo e Menu Mobile */}
                 <div className="flex items-center gap-4 md:gap-6">
                     <button className="text-slate-600 hover:text-[#003399] transition-colors xl:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
                         <Menu size={28} strokeWidth={1.5} />
@@ -404,7 +432,6 @@ function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Lado Direito: Navegação e Perfil */}
                 <div className="flex items-center gap-6">
                     <nav className="hidden xl:flex items-center gap-5 text-[15px] font-medium text-slate-600">
                         <Link href="#" onClick={(e) => { e.preventDefault(); handleDashboardClick(); }} className="hover:text-[#003399] transition-colors">Painel Geral</Link>
@@ -419,7 +446,6 @@ function ProfilePage() {
                     <div className="h-6 w-px bg-slate-300 hidden lg:block"></div>
                     
                     <div className="flex items-center gap-5">
-                        {/* Notificações */}
                         <div className="relative flex items-center">
                             <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative p-2 text-slate-400 hover:text-[#003399] transition-colors bg-white rounded-full border border-slate-200 shadow-sm outline-none">
                                 <Bell size={18} />
@@ -466,17 +492,12 @@ function ProfilePage() {
                 </div>
             </header>
 
-            {/* MAIN CONTENT */}
             <main className="flex-1 overflow-y-auto">
                 <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
                     
-                    {/* --- HEADER DO PERFIL --- */}
-                    {/* Alinhamento ao centro (items-center) para que o Avatar fique perfeitamente alinhado com os cartões mais curtos */}
                     <div className={`grid gap-6 lg:gap-8 mb-6 mt-4 lg:mt-8 items-center ${hasRole('ROLE_ADMIN') ? 'grid-cols-1 justify-items-center' : 'grid-cols-1 md:grid-cols-3'}`}>
                         
-                        {/* 1. Avatar e Nome */}
                         <div className="flex flex-col items-center justify-center">
-                            {/* A div precisa ter 'relative' e 'overflow-hidden' para o next/image funcionar com 'fill' */}
                             <div className="relative w-28 h-28 rounded-full bg-[#003399] text-white flex items-center justify-center text-5xl font-bold mb-4 shadow-sm overflow-hidden">
                                 {isFetching ? (
                                     '...'
@@ -500,33 +521,30 @@ function ProfilePage() {
                             </p>
                         </div>
 
-                        {/* 2 e 3. Minhas Reservas e Horas Totais (Ocultos para Administrador) */}
                         {!hasRole('ROLE_ADMIN') && (
                             <>
                                 <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-[#003399] text-white border-[#003399] w-full">
                                     <p className="text-sm font-medium mb-2 text-blue-100">Minhas Reservas</p>
                                     <h3 className="text-3xl font-bold">{stats.reservationsCount}</h3>
-                                    <p className="text-xs mt-2 text-blue-200/80">Histórico total</p>
+                                    <p className="text-xs mt-2 text-blue-200/80">Histórico efetuado por si</p>
                                 </div>
 
                                 <div className="p-6 rounded-2xl shadow-sm border transition-all duration-300 bg-white text-slate-700 border-slate-100 w-full">
                                     <div className="flex items-center gap-2 text-sm font-medium mb-2 text-slate-500">
                                         <Clock size={16} className="text-[#003399]" />
-                                        Horas Totais
+                                        Minhas Horas
                                     </div>
                                     <h3 className="text-3xl font-bold text-slate-800">
                                         {stats.approvedHours.toFixed(1).replace('.0', '')}h
                                     </h3>
-                                    <p className="text-xs mt-2 text-slate-400">Acumulado</p>
+                                    <p className="text-xs mt-2 text-slate-400">Total aprovado por si</p>
                                 </div>
                             </>
                         )}
                     </div>
 
-                    {/* --- FORMULÁRIO E CARDS LATERAIS --- */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                         
-                        {/* --- FORMULÁRIO DE INFORMAÇÕES PESSOAIS --- */}
                         <div className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
                             <div className="flex justify-between items-start mb-8">
                                 <div>
@@ -546,8 +564,6 @@ function ProfilePage() {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-                                {/* --- NOVO CAMPO: URL DA FOTO --- */}
-                                {/* Este campo só aparece quando o utilizador está a editar */}
                                 {isEditing && (
                                     <div className="col-span-1 md:col-span-2 space-y-2 mb-2 animate-in fade-in">
                                         <label className="text-[11px] font-bold text-[#003399] uppercase tracking-wider ml-1 flex items-center gap-1.5">
@@ -612,10 +628,8 @@ function ProfilePage() {
                             </div>
                         </div>
                         
-                        {/* --- CARDS LATERAIS --- */}
                         <div className="lg:col-span-1 flex flex-col gap-6 lg:gap-8">
                             
-                            {/* Card: Vínculo (Oculto para Administrador) */}
                             {!hasRole('ROLE_ADMIN') && (
                                 <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
                                     <div>
@@ -639,7 +653,6 @@ function ProfilePage() {
                                 </div>
                             )}
                             
-                            {/* Card: Segurança */}
                             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between h-full">
                                 <div>
                                     <div className="flex items-center gap-3 mb-4">
@@ -658,7 +671,7 @@ function ProfilePage() {
                 </div>
             </main>
 
-            {/* --- MODAL EMPRESA --- */}
+            {/* --- MODAIS MANTIDOS INTACTOS --- */}
             {isCompanyModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative max-h-[90vh] overflow-y-auto">
@@ -701,7 +714,6 @@ function ProfilePage() {
                 </div>
             )}
 
-            {/* --- MODAL ALTERAR SENHA --- */}
             {isPasswordModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 md:p-8 animate-in fade-in zoom-in-95 duration-200 relative">
