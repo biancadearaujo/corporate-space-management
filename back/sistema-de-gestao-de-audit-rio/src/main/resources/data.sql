@@ -234,7 +234,7 @@ VALUES
         'Cosmos',
         500,
         300.0,
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0BV_BHQcPsYplnEKvzTSwVTOHxUUL0PIqldFatWNwPw&s=10',
+        'https://images.pexels.com/photos/5552640/pexels-photo-5552640.jpeg',
         96,
         true,
         'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
@@ -270,7 +270,7 @@ VALUES
         'Supernova',
         500,
         300.0,
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0BV_BHQcPsYplnEKvzTSwVTOHxUUL0PIqldFatWNwPw&s=10',
+        'https://images.pexels.com/photos/5026349/pexels-photo-5026349.jpeg',
         96,
         true,
         'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
@@ -324,7 +324,7 @@ VALUES
         'Horizonte',
         500,
         300.0,
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0BV_BHQcPsYplnEKvzTSwVTOHxUUL0PIqldFatWNwPw&s=10',
+        'https://images.pexels.com/photos/36900079/pexels-photo-36900079.jpeg',
         96,
         true,
         'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
@@ -360,7 +360,7 @@ VALUES
         'Prisma',
         500,
         300.0,
-        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0BV_BHQcPsYplnEKvzTSwVTOHxUUL0PIqldFatWNwPw&s=10',
+        'https://images.pexels.com/photos/19658083/pexels-photo-19658083.jpeg',
         96,
         true,
         'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
@@ -395,7 +395,7 @@ VALUES (
            'Vetor',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjPc8JfqLNok1mINd5px27HfqV3n29W6agln-2Lx7vwA&s=10',
+           'https://images.pexels.com/photos/4985341/pexels-photo-4985341.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'MEETING_ROOM',
@@ -412,7 +412,7 @@ VALUES (
            'Zodíaco',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjPc8JfqLNok1mINd5px27HfqV3n29W6agln-2Lx7vwA&s=10',
+           'https://images.pexels.com/photos/36728069/pexels-photo-36728069.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'MEETING_ROOM',
@@ -429,7 +429,7 @@ VALUES (
            'Ápex',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjPc8JfqLNok1mINd5px27HfqV3n29W6agln-2Lx7vwA&s=10',
+           'https://images.pexels.com/photos/18022171/pexels-photo-18022171.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'MEETING_ROOM',
@@ -446,7 +446,7 @@ VALUES (
            'Frequência',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjPc8JfqLNok1mINd5px27HfqV3n29W6agln-2Lx7vwA&s=10',
+           'https://images.pexels.com/photos/5869295/pexels-photo-5869295.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'MEETING_ROOM',
@@ -463,7 +463,7 @@ VALUES (
            'Matriz',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjPc8JfqLNok1mINd5px27HfqV3n29W6agln-2Lx7vwA&s=10',
+           'https://images.pexels.com/photos/2976970/pexels-photo-2976970.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'MEETING_ROOM',
@@ -480,7 +480,7 @@ VALUES (
            'Fusão',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSprS3ydEQRESH4-GvC7jNXoYDU-NSiuLsTeObF_Qma4w&s=10',
+           'https://images.pexels.com/photos/7651594/pexels-photo-7651594.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'COWORKING',
@@ -497,7 +497,7 @@ VALUES (
            'Cinética',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSprS3ydEQRESH4-GvC7jNXoYDU-NSiuLsTeObF_Qma4w&s=10',
+           'https://images.pexels.com/photos/9300770/pexels-photo-9300770.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'COWORKING',
@@ -514,7 +514,7 @@ VALUES (
            'Plasma',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSprS3ydEQRESH4-GvC7jNXoYDU-NSiuLsTeObF_Qma4w&s=10',
+           'https://images.pexels.com/photos/7750129/pexels-photo-7750129.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'COWORKING',
@@ -531,7 +531,7 @@ VALUES (
            'Gravidade',
            150,
            '10x10',
-           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSprS3ydEQRESH4-GvC7jNXoYDU-NSiuLsTeObF_Qma4w&s=10',
+           'https://images.pexels.com/photos/12703092/pexels-photo-12703092.jpeg',
            true,
            'edb026ef-09c2-4d0a-9cf2-9318bb84ca50',
            'COWORKING',
@@ -969,12 +969,12 @@ VALUES ('550e8400-e29b-41d4-a716-446655440000',
         '12345678909',
         'ADMIN',
         '58a5bfab-eacd-49e9-b1b3-58f43b954056',
-        'https://picsum.photos/200/300',
+        'https://images.pexels.com/photos/37754385/pexels-photo-37754385.jpeg',
         '21988881111',
         '152733620'
        );
 
-INSERT INTO users (user_id, username, email, password, cpf, role, company_id, phone_number, rg_number)
+INSERT INTO users (user_id, username, email, password, cpf, role, company_id, photo_url, phone_number, rg_number)
 VALUES (
         '16dea13c-abe5-4430-babf-962bf45b0af5',
         'Ariel',
@@ -983,6 +983,7 @@ VALUES (
         '73121445006',
         'MANAGER',
         'db72b375-bd1b-4257-91ca-040fdd807f55',
+        'https://images.pexels.com/photos/38581710/pexels-photo-38581710.jpeg',
         '21999991111',
         '449603246'
        );
@@ -1025,7 +1026,7 @@ VALUES
         '80522998020',
         'COLLABORATOR',
      'db72b375-bd1b-4257-91ca-040fdd807f55',
-     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0R9242B9N4E08zjo5LPVtSoG_r5vNJ8CJhUQvk3P2cw&s=10',
+     'https://images.pexels.com/photos/36322504/pexels-photo-36322504.jpeg',
      '24776565434',
      '128372886'
     );
@@ -1458,35 +1459,35 @@ INSERT INTO scheduling_register_request (
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
              '77777777-7777-7777-7777-777777777777',
-                 'Conferência Anual', 'Conferência', '2026-10-20 08:00:00', '2026-10-20 12:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'ccf2cd31-5ade-4f31-997f-4c0b741a0b81', NULL, 'PENDING', NULL
+                 'Conferência Anual', 'Conferência', '2026-10-20 08:00:00', '2026-10-20 12:00:00', '2026-10-15 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'ccf2cd31-5ade-4f31-997f-4c0b741a0b81', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             '81e5b0a1-8591-4999-b480-a128e460599d', 'Evento Corporativo', 'Conferência', '2026-10-21 09:00:00', '2026-10-21 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', '5258392d-bdaa-481f-a76d-28fea39d8de8', NULL, 'PENDING', NULL
+             '81e5b0a1-8591-4999-b480-a128e460599d', 'Evento Corporativo', 'Conferência', '2026-10-21 09:00:00', '2026-10-21 10:00:00', '2026-10-15 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', '5258392d-bdaa-481f-a76d-28fea39d8de8', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             'df0abcb1-1ead-46b3-9ae9-e30e4e304624', 'Alinhamento Semanal', 'Sincronizar tarefas da equipe', '2026-10-30 09:00:00', '2026-10-30 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             'df0abcb1-1ead-46b3-9ae9-e30e4e304624', 'Alinhamento Semanal', 'Sincronizar tarefas da equipe', '2026-10-30 09:00:00', '2026-10-30 10:00:00', '2026-10-15 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             '035f4b24-7b20-4c04-a40b-5878eacc8bf4', 'Alinhamento Técnico', 'Reunião', '2026-10-19 09:00:00', '2026-10-19 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             '035f4b24-7b20-4c04-a40b-5878eacc8bf4', 'Alinhamento Técnico', 'Reunião', '2026-10-19 09:00:00', '2026-10-19 10:00:00', '2026-10-15 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
     scheduling_id, name, description, start_at, end_at, created_at, created_by,
     id_company, id_venue, sub_venue_id, status, booking_period
 ) VALUES (
-             'e0db37ed-ea89-4898-b90c-c9e4336956be', 'Refinamento de Tarefas', 'Reunião', '2026-10-20 09:00:00', '2026-10-20 10:00:00', '2026-10-10 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
+             'e0db37ed-ea89-4898-b90c-c9e4336956be', 'Refinamento de Tarefas', 'Reunião', '2026-10-20 09:00:00', '2026-10-20 10:00:00', '2026-10-15 10:00:00', '6d865d20-c8af-4195-91b9-43d4443e60b6', 'db72b375-bd1b-4257-91ca-040fdd807f55', 'f5867870-52c3-4e78-885a-6618540a28a9', NULL, 'PENDING', NULL
          );
 
 INSERT INTO scheduling_register_request (
