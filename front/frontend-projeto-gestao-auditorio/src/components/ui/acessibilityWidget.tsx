@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import AccessibilityBar from '@/components/ui/acessibility-bar';
+import React, { useState, useEffect } from 'react';
+import AccessibilityBar from '@/components/ui/acessibility-bar'; // Ajuste o caminho se necessário
 import { PersonStanding } from 'lucide-react';
 
 const AccessibilityWidget: React.FC = () => {
@@ -8,10 +8,6 @@ const AccessibilityWidget: React.FC = () => {
     const [fontSize, setFontSize] = useState(16);
     const [darkMode, setDarkMode] = useState(false);
     const [readingEnabled, setReadingEnabled] = useState(false);
-
-    const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-    const dragging = useRef(false);
-    const offset = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
         const v = localStorage.getItem('accessibility_visible');
@@ -22,12 +18,6 @@ const AccessibilityWidget: React.FC = () => {
         if (dm) setDarkMode(dm === 'true');
         const re = localStorage.getItem('accessibility_readingEnabled');
         if (re) setReadingEnabled(re === 'true');
-        const bp = localStorage.getItem('accessibility_btnPos');
-        if (bp) {
-            setPos(JSON.parse(bp));
-        } else {
-            setPos({ x: window.innerWidth - 60, y: window.innerHeight / 2 });
-        }
     }, []);
 
     useEffect(() => {
@@ -45,9 +35,6 @@ const AccessibilityWidget: React.FC = () => {
             readingEnabled.toString(),
         );
     }, [readingEnabled]);
-    useEffect(() => {
-        localStorage.setItem('accessibility_btnPos', JSON.stringify(pos));
-    }, [pos]);
 
     useEffect(() => {
         document.documentElement.style.fontSize = `${fontSize}px`;
@@ -81,30 +68,6 @@ const AccessibilityWidget: React.FC = () => {
         };
     }, [readingEnabled]);
 
-    useEffect(() => {
-        const onMouseMove = (e: MouseEvent) => {
-            if (!dragging.current) return;
-            setPos({
-                x: e.clientX - offset.current.x,
-                y: e.clientY - offset.current.y,
-            });
-        };
-        const onMouseUp = () => {
-            dragging.current = false;
-        };
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-        return () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-    }, []);
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        dragging.current = true;
-        offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-    };
-
     return (
         <>
             {visible && (
@@ -124,10 +87,8 @@ const AccessibilityWidget: React.FC = () => {
             )}
 
             <button
-                onMouseDown={handleMouseDown}
                 onClick={() => setVisible((v) => !v)}
-                className="fixed bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition"
-                style={{ top: pos.y, left: pos.x, zIndex: 9999 }}
+                className="fixed bottom-6 right-6 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition z-[9999]"
                 aria-label="Acessibilidade"
             >
                 <PersonStanding size={24} />
