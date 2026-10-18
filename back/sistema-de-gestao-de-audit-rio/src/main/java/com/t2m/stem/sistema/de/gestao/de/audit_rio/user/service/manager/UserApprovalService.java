@@ -93,21 +93,7 @@ public class UserApprovalService {
         userRejectedRequest.setPhoneNumber(userRegistrationRequest.getPhoneNumber());
         userRejectedRequest.setRgNumber(userRegistrationRequest.getRgNumber());
 
-        userRegistrationRequest.setStatus(RequestStatus.REJECTED);
-        userRegistrationRequest.setDecidedAt(LocalDateTime.now());
-        userRegistrationRequest.setManagerId(userValidator.getAuthenticatedUser().getUserId());
-        userRegistrationRequest.setRejectionReason(userRejectedRequestDTO.rejectionReason());
-
-        String uniqueSuffix = "_REJECTED_" + UUID.randomUUID().toString().substring(0, 8);
-
-        if (userRegistrationRequest.getEmail() != null) {
-            userRegistrationRequest.setEmail(userRegistrationRequest.getEmail() + uniqueSuffix);
-        }
-        if (userRegistrationRequest.getCpf() != null) {
-            userRegistrationRequest.setCpf("REJ-" + userRegistrationRequest.getCpf());
-        }
-
-        userRegistrationRequestRepository.save(userRegistrationRequest);
+        userRegistrationRequestRepository.delete(userRegistrationRequest);
         UserRejectedRequest rejected = userRejectedRequestRepository.save(userRejectedRequest);
 
         return UserRejectedResponseDTO.from(rejected);

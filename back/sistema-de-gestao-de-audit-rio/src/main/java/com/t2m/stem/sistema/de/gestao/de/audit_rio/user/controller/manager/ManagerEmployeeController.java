@@ -20,7 +20,7 @@ public class ManagerEmployeeController {
     private ManagerEmployeeService managerEmployeeService;
 
     @PreAuthorize("hasRole('MANAGER')")
-    @PostMapping({"/user/approve/approve/{id}"})//TODO: Melhor a url.
+    @PostMapping({"/user/approve/approve/{id}"})
     public ResponseEntity<UserResponseDTO> assignEmployeeToCompany(@PathVariable UUID id,
                                                                    @RequestBody AssignEmployeeToCompanyDTO assignEmployeeToCompanyDTO) {
         var user = managerEmployeeService.assignEmployeeToCompany(id, assignEmployeeToCompanyDTO);
