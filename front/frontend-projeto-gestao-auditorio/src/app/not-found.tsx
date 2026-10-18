@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { Star } from 'lucide-react';
 
 export default function NotFoundPage() {
     const router = useRouter();
@@ -56,7 +57,7 @@ export default function NotFoundPage() {
                 </div>
 
                 <div className="inline-flex items-center px-4 py-1.5 bg-white/5 backdrop-blur-md text-blue-100 rounded-full text-xs font-bold mb-6 tracking-widest border border-white/10 uppercase shadow-sm">
-                    <Sparkles size={14} className="mr-2 text-blue-300" /> Perdidos no Espaço
+                    <Star size={14} className="mr-2 text-blue-300" /> Perdidos no Espaço
                 </div>
                 
                 <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight tracking-tight drop-shadow-md">
