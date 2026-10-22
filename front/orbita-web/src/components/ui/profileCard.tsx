@@ -43,8 +43,19 @@ export function ProfileCard({
     };
 
     return (
-        <MtwCard {...mtwCardProps}>
-            <CardHeader floated={false} className="h-96 rounded-t-xl p-4">
+        <MtwCard 
+            {...mtwCardProps}
+            placeholder={undefined}
+            onPointerEnterCapture={undefined}
+            onPointerLeaveCapture={undefined}
+        >
+            <CardHeader 
+                floated={false} 
+                className="h-96 rounded-t-xl p-4"
+                placeholder={undefined}
+                onPointerEnterCapture={undefined}
+                onPointerLeaveCapture={undefined}
+            >
                 <div className="w-full h-full flex items-center justify-center overflow-hidden rounded-t-xl">
                     <img
                         src={imageUrl}
@@ -54,20 +65,40 @@ export function ProfileCard({
                 </div>
             </CardHeader>
 
-            <CardBody className="text-center">
-                <Typography variant="h4" color="blue-gray" className="mb-2">
+            <CardBody 
+                className="text-center"
+                placeholder={undefined}
+                onPointerEnterCapture={undefined}
+                onPointerLeaveCapture={undefined}
+            >
+                <Typography 
+                    variant="h4" 
+                    color="blue-gray" 
+                    className="mb-2"
+                    placeholder={undefined}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
+                >
                     {name}
                 </Typography>
                 <Typography
                     color="blue-gray"
                     className="font-medium"
                     textGradient
+                    placeholder={undefined}
+                    onPointerEnterCapture={undefined}
+                    onPointerLeaveCapture={undefined}
                 >
                     {role}
                 </Typography>
             </CardBody>
 
-            <CardFooter className="flex justify-center gap-7 pt-2 pb-4">
+            <CardFooter 
+                className="flex justify-center gap-7 pt-2 pb-4"
+                placeholder={undefined}
+                onPointerEnterCapture={undefined}
+                onPointerLeaveCapture={undefined}
+            >
                 <Tooltip content="LinkedIn">
                     <a
                         href={linkedinUrl}
