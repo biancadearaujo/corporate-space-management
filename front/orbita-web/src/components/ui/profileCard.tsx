@@ -43,6 +43,7 @@ export function ProfileCard({
     };
 
     return (
+        // @ts-ignore
         <MtwCard 
             {...mtwCardProps}
             placeholder={undefined}
