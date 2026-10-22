@@ -15,10 +15,7 @@ import java.util.UUID;
         name = "users_registration_request",
         uniqueConstraints = {
                 // Garante que CPF não se repita na mesma empresa.
-                @UniqueConstraint(
-                        name = "uk_cpf_company",
-                        columnNames = {"cpf", "company_id"}
-                )
+                @UniqueConstraint(name = "uk_reg_cpf_company", columnNames = {"cpf", "company_id"})
         }
 )
 public class UserRegistrationRequest {
